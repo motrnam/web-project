@@ -51,7 +51,7 @@ class ProfileViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Profile.objects.all()
     http_method_names = ['get']
 
-    @action(detail=True, methods=['get'], permission_classes =[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'], permission_classes =[permissions.IsAuthenticated])
     def me(self, request):
         profile = self.get_queryset().get(user=request.user)
         serializer = self.get_serializer(profile)
@@ -122,4 +122,21 @@ class LoginAPIView(APIView):
         return Response(
             {"error": "Invalid credentials"},
             status=status.HTTP_401_UNAUTHORIZED
+        )
+
+class LogoutAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Logout the current user",
+        responses={
+            200: openapi.Response(description="Logout successful"),
+            401: openapi.Response(description="Authentication required")
+        }
+    )
+    def post(self, request):
+        request.user.auth_token.delete()
+        return Response(
+            {"message": "Logout successful"},
+            status=status.HTTP_200_OK
         )

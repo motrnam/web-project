@@ -17,7 +17,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = '__all__'
+        fields = ['id', 'user', 'national_id', 'phone_number', 'email', 'created_at', 'updated_at']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
