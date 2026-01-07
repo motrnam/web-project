@@ -6,6 +6,7 @@ from rest_framework import viewsets, permissions, status, exceptions
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate, login
+from rest_framework.authtoken.models import Token
 
 
 from .serializers import (
@@ -136,7 +137,13 @@ class LogoutAPIView(APIView):
     )
     def post(self, request):
         request.user.auth_token.delete()
-        return Response(
+        try:
+            request.user.auth_token.delete()
+        except Token.DoesNotExist:
+            raise exceptions.NotAcceptable("Invalid Token")
+        response = Response(
             {"message": "Logout successful"},
             status=status.HTTP_200_OK
         )
+        response.delete_cookie('sessionid')
+        return response
