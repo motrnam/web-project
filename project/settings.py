@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'users',
     'backend',
+    'evidences',
 ]
 
 MIDDLEWARE = [
