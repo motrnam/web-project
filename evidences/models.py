@@ -2,7 +2,6 @@ import uuid
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.contrib.auth.models import User
 
 from project.settings import AUTH_USER_MODEL
 
@@ -14,7 +13,8 @@ class Evidence(models.Model):
     entered_at = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    technician = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.RESTRICT)  # ثبت کننده
+    technician = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.RESTRICT)  
+    case = models.ForeignKey(AUTH_USER_MODEL,on_delete=models.RESTRICT)
 
     def allowed_media_types(self):
         """MUST be implemented by child classes"""
@@ -26,7 +26,7 @@ class Witness(models.Model):
                                 on_delete=models.CASCADE)  # TODO: check they have witness or non-intern police role
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     detail = models.TextField()
-
+    case = models.ForeignKey(AUTH_USER_MODEL,on_delete=models.RESTRICT)
     def allowed_media_types(self):
         return ['PHOTO', 'VID', 'AUD']
 
@@ -68,7 +68,8 @@ class IdDocumentProperty(models.Model):
 
 
 class OtherEvidences(Evidence):
-    pass  # TODO
+    detail = models.CharField(max_length=255)
+    # TODO 
 
 
 class EvidenceMedia(models.Model):
