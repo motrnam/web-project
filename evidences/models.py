@@ -3,7 +3,11 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from project.settings import AUTH_USER_MODEL
+from case.models import Case
+# from project.settings import AUTH_USER_MODEL
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 
 
 # Create your models here.
@@ -13,8 +17,8 @@ class Evidence(models.Model):
     entered_at = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    technician = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.RESTRICT)  
-    case = models.ForeignKey(AUTH_USER_MODEL,on_delete=models.RESTRICT)
+    technician = models.ForeignKey(User, on_delete=models.RESTRICT)  
+    case = models.ForeignKey(Case,on_delete=models.RESTRICT,null=True) # TODO later change it to false
 
     def allowed_media_types(self):
         """MUST be implemented by child classes"""
@@ -22,11 +26,11 @@ class Evidence(models.Model):
 
 
 class Witness(models.Model):
-    user = models.OneToOneField(AUTH_USER_MODEL,
+    user = models.OneToOneField(User,
                                 on_delete=models.CASCADE)  # TODO: check they have witness or non-intern police role
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     detail = models.TextField()
-    case = models.ForeignKey(AUTH_USER_MODEL,on_delete=models.RESTRICT)
+    case = models.ForeignKey(Case,on_delete=models.RESTRICT,null=True) # TODO later cahnge it to false
     def allowed_media_types(self):
         return ['PHOTO', 'VID', 'AUD']
 

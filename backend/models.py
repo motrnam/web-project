@@ -1,9 +1,13 @@
 from django.db import models
-from django.contrib.auth.models import User
 import uuid
 
 from evidences.models import Evidence
-from project.settings import AUTH_USER_MODEL
+
+
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 # Create your models here.
@@ -15,7 +19,7 @@ class CrimeType(models.TextChoices):
 
 
 class Profile(models.Model):
-    user = models.OneToOneField(AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     national_id = models.CharField(max_length=20, unique=True)
     phone_number = models.CharField(max_length=15, unique=True)
@@ -26,7 +30,7 @@ class Profile(models.Model):
 
 class CaseReport(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     cadet_message = models.CharField(max_length=200, blank=True, null=True)
     number_of_edits = models.IntegerField(default=0)
 

@@ -19,8 +19,10 @@ from django.urls import path, include
 from drf_yasg.views import get_schema_view
 import drf_yasg.openapi as openapi
 from rest_framework.routers import DefaultRouter
+from rest_framework import permissions
 
 from backend import views
+from case.views import RegisterComplainViewSet
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -37,7 +39,8 @@ schema_view = get_schema_view(
 
 router = DefaultRouter()
 router.register(r'register', views.RegisterViewSet, basename='register')
-router.register(r'profiles', views.ProfileViewSet, basename='profiles')
+router.register(r'registercomplain',RegisterComplainViewSet,basename='complain')
+# router.register(r'profiles', views.ProfileViewSet, basename='profiles')
 
 
 urlpatterns = [
