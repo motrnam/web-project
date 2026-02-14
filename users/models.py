@@ -34,7 +34,7 @@ class User(AbstractUser):
     def get_roles_display(self):
         if self.groups.exists():
             return ", ".join(group.name for group in self.groups.all())
-        return "کاربر عادی"
+        return "normal user"
 
     class Meta:
         verbose_name = "کاربر"

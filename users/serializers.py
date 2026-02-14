@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-
+from django.contrib.auth.models import Group
 UserModel = get_user_model()
 
 class UserSimpleSerializer(serializers.ModelSerializer):
@@ -33,7 +33,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             phone_number=validated_data['phone_number'],
             email=validated_data['email'],
         )
-        from django.contrib.auth.models import Group
         default_group, _ = Group.objects.get_or_create(name='Base User')
         user.groups.add(default_group)
         return user

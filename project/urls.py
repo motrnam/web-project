@@ -22,7 +22,8 @@ from rest_framework.routers import DefaultRouter
 from rest_framework import permissions
 
 from backend import views
-from case.views import RegisterComplainViewSet
+from users import views as new_views
+from case.views import RegisterComplainViewSet,CaseViewSet
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -38,8 +39,9 @@ schema_view = get_schema_view(
 )
 
 router = DefaultRouter()
-router.register(r'register', views.RegisterViewSet, basename='register')
+router.register(r'register', new_views.UserViewSet, basename='register')
 router.register(r'registercomplain',RegisterComplainViewSet,basename='complain')
+router.register(r'case',CaseViewSet,basename='case')
 # router.register(r'profiles', views.ProfileViewSet, basename='profiles')
 
 

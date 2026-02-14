@@ -1,5 +1,4 @@
-from django.shortcuts import render
-from rest_framework import viewsets
+from django.shortcuts import get_object_or_404, render
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status, exceptions
 
@@ -101,6 +100,8 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
 
     def _process_complaint_status(self, request, new_status, create_case=False):
         complain = self.get_object()
+        if not complain:
+            raise exceptions.NotFound("Complain not found")
         if complain.TTL <= 0:
             raise exceptions.NotAcceptable("Complaint modified more than 3 times")
 
@@ -121,25 +122,40 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
 class CaseViewSet(viewsets.ModelViewSet):
     serializer_class = CaseSerializers
     queryset = Case.objects.all()
-    permission_classes = [permissions.IsAuthenticated, IsNotBaseUser]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update"]:
-            return [IsPoliceOfficer()]
+            return [IsPoliceOfficer(),IsOwner()]
         return super().get_permissions()
     
-    @action(detail=False, methods=['get'])
-    def me(self, request):
-        cases = self.get_queryset().filter(petrol_creator=request.user)
-        serializer = self.get_serializer(cases, many=True)
-        return Response(serializer.data)
+    # @action(detail=False, methods=['get'],permission_classes=[permissions.IsAuthenticated])
+    # def me(self, request):
+    #     cases = self.get_queryset().filter(petrol_creator=request.user)
+    #     serializer = self.get_serializer(cases, many=True)
+    #     return Response(serializer.data)
     
     def get_queryset(self):
-        user = self.request.user
-        if user.groups.filter(name='Base User').exists():
-            return Case.objects.filter(petrol_creator=user)
-        return super().get_queryset()
+        if self.request.user.groups.count() > 1: # TEMP
+            return Case.objects.all()
+        return Case.objects.filter(request__creator = self.request.us)
     
     @swagger_auto_schema(auto_schema=None)
     def destroy(self, request, *args, **kwargs):
         raise exceptions.MethodNotAllowed("DELETE")
+    
+    @action(detail=True, methods=["post"])
+    def add_witness(self,request,pk=None):
+        case  = get_object_or_404(Case, pk=id)
+
+        return Response({"todo","todo"},status=status.HTTP_418_IM_A_TEAPOT)
+    
+    @action(detail=True, methods=["post"])
+    def add_complain(self,request,pk=None):
+        case  = get_object_or_404(Case, pk=id)
+        return Response({"todo","todo"},status=status.HTTP_418_IM_A_TEAPOT)
+    
+    @action(detail=True,methods=["post"])
+    def accept_complain(self,request,pk=None):
+        case  = get_object_or_404(Case, pk=id)
+        return Response({"todo","todo"},status=status.HTTP_418_IM_A_TEAPOT)
