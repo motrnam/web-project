@@ -1,8 +1,6 @@
 import uuid
-
 from django.core.exceptions import ValidationError
 from django.db import models
-
 from case.models import Case
 # from project.settings import AUTH_USER_MODEL
 from django.contrib.auth import get_user_model

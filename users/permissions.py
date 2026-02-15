@@ -1,5 +1,6 @@
-# users/permissions.py
 from rest_framework import permissions
+from case.models import ComplainStatus
+
 
 class IsAdministrator(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -53,4 +54,39 @@ class IsOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return obj.petrol_creator == request.user
 
-    
+class CanSubmitComplaint(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return (
+            obj.creator == request.user and
+            obj.status in [ComplainStatus.DRAFT, ComplainStatus.RETURNED_TO_COMPLAINANT] and
+            obj.revision_count < obj.max_revisions
+        )
+
+class IsCadetReviewer(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return (
+            request.user.groups.filter(name='Cadet').exists() and
+            obj.status == ComplainStatus.PENDING_CADET
+        )
+
+class IsOfficerReviewer(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return (
+            request.user.groups.filter(name__in=['Police Officer', 'Patrol Officer']).exists() and
+            obj.status == ComplainStatus.PENDING_OFFICER
+        )
+
+class IsPoliceNotCadet(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.groups.filter(
+            name__in=['Police Officer', 'Patrol Officer', 'Detective', 'Sergeant', 'Captain', 'Chief']
+        ).exists()
+
+class IsSupervisor(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        # فرض: Chief نیازی به supervisor ندارد؛ بقیه نیاز به Chief/Captain/Sergeant دارند
+        if request.user.groups.filter(name='Chief').exists():
+            return True
+        return request.user.groups.filter(
+            name__in=['Captain', 'Sergeant']
+        ).exists() and obj.reporter != request.user  # نه خود reporter

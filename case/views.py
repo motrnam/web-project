@@ -1,161 +1,307 @@
-from django.shortcuts import get_object_or_404, render
-from rest_framework.response import Response
-from rest_framework import viewsets, permissions, status, exceptions
-
-from case.models import RegisterComplain, Case, RequestForCaseStatus
-from case.serializers import CaseSerializers, RegisterComplainSerializers, RequestCheckSerializers
+#case/views.py
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from drf_yasg.utils import swagger_auto_schema
-
-
-from users.permissions import IsCadet, IsNotBaseUser, IsPoliceOfficer , IsOwner
-
-# Create your views here.
+from drf_yasg import openapi
+from django.utils import timezone
+from .models import (
+    RegisterComplain, ComplainReview, Complainant,
+    CrimeSceneReport, CrimeSceneWitness, Case,
+    ComplainStatus, CrimeSceneReportStatus, ComplainantStatus
+)
+from .serializers import (
+    RegisterComplainSerializer, ComplainReviewSerializer,
+    ComplainantSerializer, CrimeSceneReportSerializer,
+    CrimeSceneWitnessSerializer, CaseSerializer
+)
+from users.permissions import (
+    IsCadet, IsPoliceNotCadet, IsPoliceOfficer,
+    CanSubmitComplaint, IsCadetReviewer, IsOfficerReviewer, IsSupervisor
+)
 
 
 class RegisterComplainViewSet(viewsets.ModelViewSet):
-    serializer_class = RegisterComplainSerializers
     queryset = RegisterComplain.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(
-        operation_description="Register a new complain",
-        request_body=RegisterComplainSerializers,
-        responses={201: RegisterComplainSerializers, 400: "Bad Request"},
-    )
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def get_serializer_class(self):
-        if self.action in ["accept", "reject", "send_to_sender"]:
-            return RequestCheckSerializers
-        return super().get_serializer_class()
-
-    def get_object(self):
-        obj = super().get_object()
-        user = self.request.user
-
-        is_cadet = user.groups.filter(name="Cadet").exists()
-        is_owner = obj.user == user
-
-        if not (is_cadet or is_owner):
-            raise exceptions.PermissionDenied(
-                "You do not have permission to access this."
-            )
-
-        cadet_action = ["send_to_sender", "update", "partial_update"]
-        owner_action = ["update", "partial_update"]
-
-        if self.action in cadet_action:
-            if not is_cadet:
-                raise exceptions.PermissionDenied(
-                    "Only cadets can perform this action."
-                )
-            if obj.status != RequestForCaseStatus.PENDING:
-                raise exceptions.NotAcceptable(
-                    "Complaint has already been processed and cannot be modified."
-                )
-            if obj.TTL <= 0:
-                raise exceptions.NotAcceptable(
-                    "Complaint has reached the maximum number of modifications (3)."
-                )
-            return obj
-        elif self.action in owner_action:
-            if not is_owner:
-                raise exceptions.PermissionDenied(
-                    "Only the owner can perform this action."
-                )
-            if (
-                obj.status != RequestForCaseStatus.PENDING
-                and obj.status != RequestForCaseStatus.RETURN_TO_SENDER
-            ):
-                raise exceptions.NotAcceptable(
-                    "Complaint has already been processed and cannot be modified."
-                )
-            if obj.TTL <= 0:
-                raise exceptions.NotAcceptable(
-                    "Complaint has reached the maximum number of modifications (3)."
-                )
-            return obj
-        return obj
-
-    @action(detail=True, methods=["post"], permission_classes=[IsCadet])
-    def accept(self, request, pk=None):
-        return self._process_complaint_status(
-            request, RequestForCaseStatus.ACCEPTED, create_case=True
-        )
-
-    @action(detail=True, methods=["post"], permission_classes=[IsCadet])
-    def reject(self, request, pk=None):
-        return self._process_complaint_status(request, RequestForCaseStatus.REJECTED)
-
-    @action(detail=True, methods=["post"], permission_classes=[IsCadet])
-    def return_to_sender(self, request, pk=None):
-        return self._process_complaint_status(
-            request, RequestForCaseStatus.RETURN_TO_SENDER
-        )
-
-    def _process_complaint_status(self, request, new_status, create_case=False):
-        complain = self.get_object()
-        if not complain:
-            raise exceptions.NotFound("Complain not found")
-        if complain.TTL <= 0:
-            raise exceptions.NotAcceptable("Complaint modified more than 3 times")
-
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        serializer.save(request=complain, checked_by=request.user)
-        complain.status = new_status
-        complain.TTL -= 1
-        complain.save()
-
-        if create_case:
-            Case.objects.create(complain=complain)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class CaseViewSet(viewsets.ModelViewSet):
-    serializer_class = CaseSerializers
-    queryset = Case.objects.all()
+    serializer_class = RegisterComplainSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update"]:
-            return [IsPoliceOfficer(),IsOwner()]
+        if self.action in ['create']:
+            return [permissions.IsAuthenticated()]  # فقط کاربران عادی (Base User)
+        if self.action in ['submit', 'update', 'partial_update']:
+            return [CanSubmitComplaint()]
+        if self.action in ['cadet_review', 'review_complainant']:
+            return [IsCadetReviewer()]
+        if self.action == 'officer_review':
+            return [IsOfficerReviewer()]
         return super().get_permissions()
-    
-    # @action(detail=False, methods=['get'],permission_classes=[permissions.IsAuthenticated])
-    # def me(self, request):
-    #     cases = self.get_queryset().filter(petrol_creator=request.user)
-    #     serializer = self.get_serializer(cases, many=True)
-    #     return Response(serializer.data)
-    
-    def get_queryset(self):
-        if self.request.user.groups.count() > 1: # TEMP
-            return Case.objects.all()
-        return Case.objects.filter(request__creator = self.request.us)
-    
-    @swagger_auto_schema(auto_schema=None)
-    def destroy(self, request, *args, **kwargs):
-        raise exceptions.MethodNotAllowed("DELETE")
-    
-    @action(detail=True, methods=["post"])
-    def add_witness(self,request,pk=None):
-        case  = get_object_or_404(Case, pk=id)
 
-        return Response({"todo","todo"},status=status.HTTP_418_IM_A_TEAPOT)
-    
-    @action(detail=True, methods=["post"])
-    def add_complain(self,request,pk=None):
-        case  = get_object_or_404(Case, pk=id)
-        return Response({"todo","todo"},status=status.HTTP_418_IM_A_TEAPOT)
-    
-    @action(detail=True,methods=["post"])
-    def accept_complain(self,request,pk=None):
-        case  = get_object_or_404(Case, pk=id)
-        return Response({"todo","todo"},status=status.HTTP_418_IM_A_TEAPOT)
+    def perform_create(self, serializer):
+        serializer.save(creator=self.request.user, status=ComplainStatus.DRAFT)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="ارسال شکایت به کارآموز برای بررسی (تغییر وضعیت به PENDING_CADET)",
+        responses={200: RegisterComplainSerializer(many=False)}
+    )
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        complain = self.get_object()
+        if not complain.can_submit():
+            raise ValidationError(
+                detail={
+                    "status": complain.status,
+                    "revision_count": complain.revision_count,
+                    "message": "شکایت قابل ارسال نیست. یا وضعیت مناسب نیست یا حداکثر ویرایش رسیده است."
+                }
+            )
+        complain.status = ComplainStatus.PENDING_CADET
+        complain.save(update_fields=['status'])
+        return Response(RegisterComplainSerializer(complain).data)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="بررسی توسط کارآموز - accept یا return",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'action': openapi.Schema(type=openapi.TYPE_STRING, enum=['accept', 'return']),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+            },
+            required=['action']
+        ),
+        responses={200: RegisterComplainSerializer, 400: 'Bad request'}
+    )
+    @action(detail=True, methods=['post'])
+    def cadet_review(self, request, pk=None):
+        complain = self.get_object()
+        action_type = request.data.get('action')
+        message = request.data.get('message', '').strip()
+
+        if action_type not in ['accept', 'return']:
+            raise ValidationError("action باید 'accept' یا 'return' باشد")
+
+        if action_type == 'return' and not message:
+            raise ValidationError("هنگام بازگشت، پیام الزامی است")
+
+        review = ComplainReview.objects.create(
+            complain=complain,
+            reviewed_by=request.user,
+            message=message,
+            is_approval=(action_type == 'accept'),
+            to_status=ComplainStatus.PENDING_OFFICER if action_type == 'accept' else ComplainStatus.RETURNED_TO_COMPLAINANT
+        )
+
+        if action_type == 'return':
+            complain.revision_count += 1
+            if complain.revision_count >= complain.max_revisions:
+                complain.status = ComplainStatus.CANCELLED
+                review.to_status = ComplainStatus.CANCELLED
+                review.save()
+            else:
+                complain.status = ComplainStatus.RETURNED_TO_COMPLAINANT
+        else:
+            complain.status = ComplainStatus.PENDING_OFFICER
+
+        complain.save()
+        return Response(RegisterComplainSerializer(complain).data)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="بررسی توسط افسر پلیس - accept (تشکیل پرونده) یا return (به کارآموز)",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'action': openapi.Schema(type=openapi.TYPE_STRING, enum=['accept', 'return']),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+            },
+            required=['action']
+        )
+    )
+    @action(detail=True, methods=['post'])
+    def officer_review(self, request, pk=None):
+        complain = self.get_object()
+        action_type = request.data.get('action')
+        message = request.data.get('message', '').strip()
+
+        if action_type not in ['accept', 'return']:
+            raise ValidationError("action باید 'accept' یا 'return' باشد")
+
+        review = ComplainReview.objects.create(
+            complain=complain,
+            reviewed_by=request.user,
+            message=message,
+            is_approval=(action_type == 'accept'),
+            to_status=ComplainStatus.APPROVED if action_type == 'accept' else ComplainStatus.PENDING_CADET
+        )
+
+        if action_type == 'accept':
+            case = Case.objects.create(
+                complain=complain,
+                created_by=request.user,
+                crime_type=complain.crime_type,  # ← از مدل خوانده می‌شود
+                status="OPEN"
+            )
+            complain.status = ComplainStatus.APPROVED
+        else:
+            complain.status = ComplainStatus.PENDING_CADET
+
+        complain.save()
+        return Response(RegisterComplainSerializer(complain).data)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="اضافه کردن شاکی اضافی به شکایت (فقط در وضعیت‌های مجاز)",
+        request_body=ComplainantSerializer,
+        responses={201: ComplainantSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def add_complainant(self, request, pk=None):
+        complain = self.get_object()
+        if complain.status not in [ComplainStatus.DRAFT, ComplainStatus.PENDING_CADET, ComplainStatus.RETURNED_TO_COMPLAINANT]:
+            raise ValidationError("نمی‌توان در این وضعیت شاکی اضافه کرد")
+
+        serializer = ComplainantSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(complain=complain)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="تأیید/رد شاکی اضافی توسط کارآموز",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'complainant_id': openapi.Schema(type=openapi.TYPE_UUID),
+                'action': openapi.Schema(type=openapi.TYPE_STRING, enum=['approve', 'reject']),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+            },
+            required=['complainant_id', 'action']
+        ),
+        responses={200: ComplainantSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def review_complainant(self, request, pk=None):
+        complain = self.get_object()
+        complainant_id = request.data.get('complainant_id')
+        action = request.data.get('action')
+        message = request.data.get('message', '')
+
+        if action not in ['approve', 'reject']:
+            raise ValidationError("action باید 'approve' یا 'reject' باشد")
+
+        try:
+            complainant = complain.complainants.get(id=complainant_id)
+        except Complainant.DoesNotExist:
+            raise ValidationError("شاکی یافت نشد")
+
+        if complainant.status != ComplainantStatus.PENDING:
+            raise ValidationError("شاکی قبلاً بررسی شده")
+
+        complainant.status = ComplainantStatus.APPROVED if action == 'approve' else ComplainantStatus.REJECTED
+        # می‌توان ComplainReview جدا برای شاکیان اضافه کرد، اما فعلاً ساده نگه داشتم
+        complainant.save()
+
+        return Response(ComplainantSerializer(complainant).data)
+
+
+# ────────────────────────────────────────────────
+#               Crime Scene Report
+# ────────────────────────────────────────────────
+
+class CrimeSceneReportViewSet(viewsets.ModelViewSet):
+    queryset = CrimeSceneReport.objects.all()
+    serializer_class = CrimeSceneReportSerializer
+    permission_classes = [permissions.IsAuthenticated, IsPoliceNotCadet]
+
+    def perform_create(self, serializer):
+        serializer.save(reporter=self.request.user, status=CrimeSceneReportStatus.DRAFT)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="ارسال گزارش صحنه جرم به مافوق (یا مستقیم تأیید اگر Chief باشد)",
+        responses={200: CrimeSceneReportSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        report = self.get_object()
+        if report.status != CrimeSceneReportStatus.DRAFT:
+            raise ValidationError("گزارش قبلاً ارسال شده است.")
+
+        if request.user.groups.filter(name='Chief').exists():
+            # استثنا: Chief مستقیم تأیید می‌کند
+            report.status = CrimeSceneReportStatus.APPROVED
+            report.supervisor = request.user
+            report.approved_at = timezone.now()
+            case = Case.objects.create(
+                crime_scene_report=report,
+                created_by=request.user,
+                crime_type=report.crime_type,
+                status="OPEN"
+            )
+            report.case = case
+        else:
+            report.status = CrimeSceneReportStatus.PENDING_SUPERVISOR
+
+        report.save()
+        return Response(CrimeSceneReportSerializer(report).data)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="تأیید گزارش صحنه جرم توسط مافوق و تشکیل پرونده",
+        responses={200: CrimeSceneReportSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        report = self.get_object()
+        if report.status != CrimeSceneReportStatus.PENDING_SUPERVISOR:
+            raise ValidationError("گزارش در وضعیت قابل تأیید نیست.")
+
+        report.status = CrimeSceneReportStatus.APPROVED
+        report.supervisor = request.user
+        report.approved_at = timezone.now()
+        report.save()
+
+        case = Case.objects.create(
+            crime_scene_report=report,
+            created_by=request.user,
+            crime_type=report.crime_type,
+            status="OPEN"
+        )
+        report.case = case
+        report.save()
+
+        return Response(CrimeSceneReportSerializer(report).data)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="اضافه کردن شاهد به گزارش صحنه جرم",
+        request_body=CrimeSceneWitnessSerializer,
+        responses={201: CrimeSceneWitnessSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def add_witness(self, request, pk=None):
+        report = self.get_object()
+        serializer = CrimeSceneWitnessSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        witness = serializer.save(report=report)
+        return Response(CrimeSceneWitnessSerializer(witness).data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="اضافه کردن شاکی به پرونده صحنه جرم (فقط بعد از تشکیل Case)",
+        request_body=ComplainantSerializer,
+        responses={201: ComplainantSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def add_complainant(self, request, pk=None):
+        report = self.get_object()
+        if not report.case:
+            raise ValidationError("پرونده هنوز تشکیل نشده. ابتدا گزارش را تأیید کنید.")
+
+        serializer = ComplainantSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(case=report.case)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
