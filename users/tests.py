@@ -1,3 +1,116 @@
 from django.test import TestCase
-
+from django.contrib.auth.models import Group
+from rest_framework.test import APIClient
+from rest_framework import status
 # Create your tests here.
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
+
+class CanRegisterAndLogin(TestCase):
+    def setUp(self):
+        self.normal_group = Group.objects.get_or_create(name="Base User")[0]
+        self.cadet_group = Group.objects.get_or_create(name="Cadet")[0]
+        self.client = APIClient()
+        
+    def test_can_register_ok_payload(self):
+        user_data = {
+            "username": "lucky_luke",
+            "national_id": "0987654321",
+            "full_name": "Joe Dalton",
+            "phone_number": "09123456789",
+            "email":"luke@dalton.com",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
+        self.assertEqual(User.objects.count() , 1 , f"We have {User.objects.count()} user(s) in the database")
+    
+    def test_cant_register_bad_payload(self):
+        user_data = {
+            "username": "lucky_luke",
+            "national_id": "0987654321",
+            "phone_number": "09123456789",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data)
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,"OK")
+        self.assertIn("email",response.data)
+        
+    def test_uniqueness_of_username(self):
+        user_data1 = {
+            "username": "lucky_luke2",
+            "national_id": "0987654321",
+            "full_name": "Joe Dalton",
+            "phone_number": "09123456788",
+            "email":"trump@dalton.com",
+            "password": "prison"
+        }
+        
+        user_data2 = {
+            "username": "lucky_luke2",
+            "national_id": "0987654322",
+            "full_name": "Joe Biden",
+            "phone_number": "09123456789",
+            "email":"trump1@dalton.com",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data1)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
+        
+        response = self.client.post("/register/",user_data2)
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,"OK")
+        self.assertIn('username', response.data)
+        
+    def test_can_login_after_register(self):
+        user_data1 = {
+            "username": "ShahAbbas1",
+            "national_id": "0987634321",
+            "full_name": "Shah Abbas Safavi",
+            "phone_number": "09123456788",
+            "email":"trump@dalton.com",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data1)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
+        
+        user_data_login = {
+            "username":"ShahAbbas1",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/login/",user_data_login)
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        
+        ping_response = self.client.get("/register/ping/")
+        
+        self.assertEqual(ping_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ping_response.data['username'], "ShahAbbas1")
+        self.assertEqual(ping_response.data['message'], "success")
+        
+    def test_cannot_login_with_bad_payload(self):
+        user_data1 = {
+            "username": "ShahAbbas1",
+            "national_id": "0987634321",
+            "full_name": "Shah Abbas Safavi",
+            "phone_number": "09123456788",
+            "email":"trump@dalton.com",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data1)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
+        
+        user_data_login = {
+            "username":"ShahAbbas1",
+            "password": "prisoner"
+        }
+        
+        response = self.client.post("/login/",user_data_login)
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("error",response.data)

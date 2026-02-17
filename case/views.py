@@ -2,23 +2,21 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.utils import timezone
 from .models import (
     RegisterComplain, ComplainReview, Complainant,
-    CrimeSceneReport, CrimeSceneWitness, Case,
+    CrimeSceneReport, Case,
     ComplainStatus, CrimeSceneReportStatus, ComplainantStatus
 )
 from .serializers import (
-    RegisterComplainSerializer, ComplainReviewSerializer,
-    ComplainantSerializer, CrimeSceneReportSerializer,
-    CrimeSceneWitnessSerializer, CaseSerializer
+    RegisterComplainSerializer, ComplainantSerializer, CrimeSceneReportSerializer,
+    CrimeSceneWitnessSerializer
 )
 from users.permissions import (
-    IsCadet, IsPoliceNotCadet, IsPoliceOfficer,
-    CanSubmitComplaint, IsCadetReviewer, IsOfficerReviewer, IsSupervisor
+    IsPoliceNotCadet, CanSubmitComplaint, IsCadetReviewer, IsOfficerReviewer
 )
 
 
@@ -173,11 +171,11 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
         operation_description="تأیید/رد شاکی اضافی توسط کارآموز",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            properties={
-                'complainant_id': openapi.Schema(type=openapi.TYPE_UUID),
-                'action': openapi.Schema(type=openapi.TYPE_STRING, enum=['approve', 'reject']),
-                'message': openapi.Schema(type=openapi.TYPE_STRING),
-            },
+            # properties={
+            #     'complainant_id': openapi.Schema(type=openapi.TYPE_UUID),
+            #     'action': openapi.Schema(type=openapi.TYPE_STRING, enum=['approve', 'reject']),
+            #     'message': openapi.Schema(type=openapi.TYPE_STRING),
+            # },
             required=['complainant_id', 'action']
         ),
         responses={200: ComplainantSerializer}

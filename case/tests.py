@@ -3,21 +3,33 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 import factory
 from faker import Faker
+from .models import RegisterComplain,CrimeType
+from datetime import timezone
+from rest_framework.test import APIClient
+from django.urls import reverse
+from rest_framework import status
+
+
+
+
 fake = Faker()
 # Create your tests here.
 User = get_user_model()
+
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
-    username = factory.Faker('user_name')
-    email = factory.Faker('email')
-    
-    full_name = factory.LazyAttribute(lambda x: f"{fake.first_name()} {fake.last_name()}")
-    
-    national_id = factory.Sequence(lambda n: f"{1000000000 + n}") 
-    
+    username = factory.Faker("user_name")
+    email = factory.Faker("email")
+
+    full_name = factory.LazyAttribute(
+        lambda x: f"{fake.first_name()} {fake.last_name()}"
+    )
+
+    national_id = factory.Sequence(lambda n: f"{1000000000 + n}")
+
     phone_number = factory.Sequence(lambda n: f"09{str(n).zfill(9)}")
 
     @factory.post_generation
@@ -28,12 +40,94 @@ class UserFactory(factory.django.DjangoModelFactory):
 
 class CanRegisterComplain(TestCase):
     def setUp(self):
-        # self.normal_group = Group.objects.get_or_create('Base User')
-        # self.cadet_group = Group.objects.get_or_create('Cadet')
+        self.normal_group = Group.objects.get_or_create(name="Base User")[0]
+        self.cadet_group = Group.objects.get_or_create(name="Cadet")[0]
+
+        self.normal_user = UserFactory()
+        self.normal_user.groups.add(self.normal_group)
+        self.client = APIClient()
+        self.client2 = APIClient()
+
+    def test_can_edit_case_first_time_model(self):
+        complain = RegisterComplain.objects.create(
+            creator=self.normal_user, 
+            title="some title", 
+            description="for test",
+            incident_datetime=timezone.now(),  
+            incident_location="Test Location",  
+            crime_type=CrimeType.TYPE_1,  
+        )
         
-        # self.normal_user = UserFactory()
-        # self.normal_user.groups.add(self.normal_group)
-        return super().setUp()
+        self.assertTrue(complain.can_be_edited_by_complainant(),"Can edit it at the first time!")
+        
+    def test_can_make_using_endpoints(self):
+        self.client.force_authenticate(user=self.normal_user)
+        
+        complaint_data = {
+            'title': 'API Test Complaint',
+            'description': 'This is a test complaint created via API',
+            'incident_datetime': timezone.now().isoformat(),
+            'incident_location': 'API Test Location',
+            'crime_type': CrimeType.TYPE_1,
+        }
+        create_url = reverse('register-complaint-list')
+        response = self.client.post(create_url, complaint_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(RegisterComplain.objects.count(), 1)
+        
+        complaint_id = response.data['id']
+        
+        detail_url = reverse('register-complaint-detail', args=[complaint_id])
+        response = self.client.get(detail_url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], complaint_data['title'])
+        
+        complaint = RegisterComplain.objects.get(id=complaint_id)
+        self.assertEqual(complaint.creator, self.normal_user)
     
-    def test_new_case(self):
-        self.assertEqual(1,2,"1 == 1")
+    def test_cannot_create_complaint_without_authentication(self):
+        """Test that unauthenticated users cannot create complaints"""
+        complaint_data = {
+            'title': 'Unauthorized',
+            'description': 'This should not be created',
+            'incident_datetime': timezone.now().isoformat(),
+            'incident_location': 'Test Location',
+            'crime_type': CrimeType.TYPE_1,
+        }
+        
+        create_url = reverse('register-complaint-list')
+        response = self.client.post(create_url, complaint_data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(RegisterComplain.objects.count(), 0)
+        
+    def test_cannot_create_complaint_with_invalid_data(self):
+        """Test that complaints cannot be created with invalid data"""
+        self.client.force_authenticate(user=self.normal_user)
+        
+        invalid_data = {
+            'title': 'Incomplete Complaint',
+        }
+        
+        create_url = reverse('register-complaint-list')
+        response = self.client.post(create_url, invalid_data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+    def test_can_cadet_reject(self):
+        self.client.force_authenticate(user=self.normal_user)
+        
+        complaint_data = {
+            'title': 'API Test Complaint',
+            'description': 'This is a test complaint created via API',
+            'incident_datetime': timezone.now().isoformat(),
+            'incident_location': 'API Test Location',
+            'crime_type': CrimeType.TYPE_1,
+        }
+        create_url = reverse('register-complaint-list')
+        response = self.client.post(create_url, complaint_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        self.client2.force_authenticate(user=self.cadet_group)
+

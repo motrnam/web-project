@@ -1,4 +1,4 @@
-#case/models.py
+# case/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 import uuid
@@ -51,8 +51,15 @@ class RegisterComplain(models.Model):
     title = models.CharField(max_length=255, verbose_name="عنوان شکایت")
     description = models.TextField(verbose_name="شرح کامل شکایت")
     incident_datetime = models.DateTimeField(verbose_name="زمان تقریبی وقوع")
-    incident_location = models.CharField(max_length=300, blank=True, verbose_name="محل وقوع")
-    crime_type = models.CharField(max_length=20, choices=CrimeType.choices, verbose_name="نوع جرم")  # ← اضافه شد
+    incident_location = models.CharField(
+        max_length=300, blank=True, verbose_name="محل وقوع"
+    )
+    crime_type = models.CharField(
+        max_length=20,
+        choices=CrimeType.choices,
+        default=CrimeType.TYPE_1,
+        verbose_name="نوع جرم",
+    )  # ← اضافه شد
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -83,25 +90,32 @@ class RegisterComplain(models.Model):
         )
 
     def can_submit(self):
-        return self.status in (
-            ComplainStatus.DRAFT,
-            ComplainStatus.RETURNED_TO_COMPLAINANT,
-        ) and self.revision_count < self.max_revisions
+        return (
+            self.status
+            in (
+                ComplainStatus.DRAFT,
+                ComplainStatus.RETURNED_TO_COMPLAINANT,
+            )
+            and self.revision_count < self.max_revisions
+        )
 
 
 class Complainant(models.Model):
     """شاکیان اضافی (علاوه بر شاکی اصلی)"""
+
     complain = models.ForeignKey(
         RegisterComplain,
         on_delete=models.CASCADE,
         related_name="complainants",
-        null=True, blank=True  # برای مسیر شکایت
+        null=True,
+        blank=True,  # برای مسیر شکایت
     )
     case = models.ForeignKey(
-        'Case',
+        "Case",
         on_delete=models.CASCADE,
         related_name="complainants",
-        null=True, blank=True  # برای مسیر صحنه جرم
+        null=True,
+        blank=True,  # برای مسیر صحنه جرم
     )
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     relationship_to_incident = models.CharField(
@@ -113,7 +127,7 @@ class Complainant(models.Model):
         max_length=20,
         choices=ComplainantStatus.choices,
         default=ComplainantStatus.PENDING,
-        verbose_name="وضعیت شاکی"
+        verbose_name="وضعیت شاکی",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -128,13 +142,16 @@ class Complainant(models.Model):
 
 class ComplainReview(models.Model):
     """هر بررسی توسط کارآموز یا افسر پلیس"""
+
     complain = models.ForeignKey(
         RegisterComplain, on_delete=models.CASCADE, related_name="reviews"
     )
     reviewed_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     reviewed_at = models.DateTimeField(auto_now_add=True)
     message = models.TextField(blank=True, verbose_name="پیام / دلیل بازگشت یا رد")
-    is_approval = models.BooleanField(default=False, verbose_name="تأیید نهایی این مرحله؟")
+    is_approval = models.BooleanField(
+        default=False, verbose_name="تأیید نهایی این مرحله؟"
+    )
     to_status = models.CharField(max_length=32, choices=ComplainStatus.choices)
 
     class Meta:
@@ -159,7 +176,10 @@ class CrimeSceneReport(models.Model):
     location = models.CharField(max_length=300, verbose_name="محل دقیق یا تقریبی")
     description = models.TextField(verbose_name="شرح صحنه جرم")
     crime_type = models.CharField(
-        max_length=20, choices=CrimeType.choices, verbose_name="نوع جرم"
+        max_length=20,
+        choices=CrimeType.choices,
+        verbose_name="نوع جرم",
+        default=CrimeType.TYPE_1,
     )
 
     status = models.CharField(
@@ -178,13 +198,13 @@ class CrimeSceneReport(models.Model):
     )
     approved_at = models.DateTimeField(null=True, blank=True)
 
-    case = models.OneToOneField(
-        "Case",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="crime_scene_report",
-    )
+    # case = models.OneToOneField(
+    #     "Case",
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name="crime_scene_report",
+    # )
 
     class Meta:
         verbose_name = "گزارش صحنه جرم"
@@ -197,6 +217,7 @@ class CrimeSceneReport(models.Model):
 
 class CrimeSceneWitness(models.Model):
     """شاهدان گزارش‌شده در صحنه جرم"""
+
     report = models.ForeignKey(
         CrimeSceneReport, on_delete=models.CASCADE, related_name="witnesses"
     )
@@ -238,7 +259,7 @@ class Case(models.Model):
         User, on_delete=models.RESTRICT, related_name="created_cases"
     )
     crime_type = models.CharField(
-        max_length=20, choices=CrimeType.choices, verbose_name="نوع جرم"
+        max_length=20, choices=CrimeType.choices, verbose_name="نوع جرم",default=CrimeType.TYPE_1
     )
     case_number = models.CharField(max_length=32, unique=True, blank=True)
 
