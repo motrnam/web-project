@@ -37,8 +37,8 @@ class Lead(models.Model):
 
 
 class Yarn(models.Model):
-    lead1 = models.ForeignKey(Lead, null=False, on_delete=models.CASCADE)
-    lead2 = models.ForeignKey(Lead, null=False, on_delete=models.CASCADE)
+    lead1 = models.ForeignKey(Lead, null=False, related_name='yarns_as_first', on_delete=models.CASCADE)
+    lead2 = models.ForeignKey(Lead, null=False, related_name='yarns_as_second', on_delete=models.CASCADE)
 
     def clean(self):
         if self.lead1.board != self.lead2.board:
@@ -48,14 +48,28 @@ class Yarn(models.Model):
 
 
 class Detection(models.Model):
-    detective = models.ForeignKey(User, null=False, on_delete=models.RESTRICT, verbose_name="کارآگاه")
-    case = models.ForeignKey(Case, null=False, unique=True, on_delete=models.RESTRICT, verbose_name="پرونده")
-    detection_board = models.ForeignKey(DetectionBoard, unique=True, on_delete=models.RESTRICT, verbose_name="تخته")
-    sergeant = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, verbose_name="گروهبان")
+    detective = models.ForeignKey(
+        User,
+        related_name="detections_as_detective",
+        on_delete=models.RESTRICT,
+        verbose_name="کارآگاه"
+    )
+    case = models.OneToOneField(Case, null=False, on_delete=models.RESTRICT, verbose_name="پرونده")
+    detection_board = models.OneToOneField(DetectionBoard, on_delete=models.RESTRICT, verbose_name="تخته")
+    sergeant = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        related_name="detections_as_sergeant",
+        on_delete=models.SET_NULL,
+        verbose_name="گروهبان"
+    )
 
     def clean(self):
-        return (IsDetective(self.detective) and
-                (self.sergeant is None or IsSergeant(self.sergeant)))
+        if not IsDetective(self.detective):
+            raise ValidationError("کارآگاه باید کارآگاه باشد")
+        if not (self.sergeant is None or IsSergeant(self.sergeant)):
+            raise ValidationError("گروهبان باید گروهبان باشد")
 
     def can_delete(self):
         return False
