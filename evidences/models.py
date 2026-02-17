@@ -1,89 +1,282 @@
-import uuid
-from django.core.exceptions import ValidationError
+# evidences/models.py
+
 from django.db import models
-from case.models import Case
-# from project.settings import AUTH_USER_MODEL
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from django.contrib.auth import get_user_model
+import uuid
+from case.models import Case
+
 User = get_user_model()
 
 
+class EvidenceCategory(models.TextChoices):
+    WITNESS_STATEMENT = "WITNESS", "استشهاد / اظهارات شاهدان"
+    BIOLOGICAL = "BIOLOGICAL", "شواهد زیستی و پزشکی"
+    VEHICLE = "VEHICLE", "وسیله نقلیه"
+    ID_DOCUMENT = "ID_DOCUMENT", "مدارک شناسایی"
+    OTHER = "OTHER", "سایر شواهد"
 
-# Create your models here.
+
 class Evidence(models.Model):
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    entered_at = models.DateTimeField(auto_now_add=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    technician = models.ForeignKey(User, on_delete=models.RESTRICT)  
-    case = models.ForeignKey(Case,on_delete=models.RESTRICT,null=True) # TODO later change it to false
+    """
+    مدل پایه همه انواع شواهد
+    """
 
-    def allowed_media_types(self):
-        """MUST be implemented by child classes"""
-        raise NotImplementedError("Child classes must implement allowed_media_types()")
-
-
-class Witness(models.Model):
-    user = models.OneToOneField(User,
-                                on_delete=models.CASCADE)  # TODO: check they have witness or non-intern police role
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    detail = models.TextField()
-    case = models.ForeignKey(Case,on_delete=models.RESTRICT,null=True) # TODO later cahnge it to false
+
+    case = models.ForeignKey(
+        Case,
+        on_delete=models.CASCADE,
+        related_name="evidences",
+        verbose_name="پرونده مرتبط",
+    )
+
+    category = models.CharField(
+        max_length=32, choices=EvidenceCategory.choices, verbose_name="دسته شواهد"
+    )
+
+    title = models.CharField(max_length=255, verbose_name="عنوان شواهد")
+
+    description = models.TextField(verbose_name="توضیحات / شرح")
+
+    registered_by = models.ForeignKey(
+        User,
+        on_delete=models.RESTRICT,
+        related_name="registered_evidences",
+        verbose_name="ثبت‌کننده",
+    )
+
+    registered_at = models.DateTimeField(
+        default=timezone.now, editable=False, verbose_name="تاریخ ثبت"
+    )
+
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="آخرین به‌روزرسانی")
+
+    class Meta:
+        verbose_name = "شاهد / مدرک"
+        verbose_name_plural = "شواهد و مدارک"
+        ordering = ["-registered_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.category}) – {self.case}"
+
+    def clean(self):
+        if not self.case_id:
+            raise ValidationError("شواهد باید حتماً به یک پرونده وصل شود.")
+
+
+# ────────────────────────────────────────────────
+#          1. استشهاد شاهدان / افراد محلی
+# ────────────────────────────────────────────────
+
+
+class WitnessStatement(Evidence):
+    """
+    استشهاد شاهدان – می‌تواند ضمیمه رسانه (عکس/فیلم/صوت) داشته باشد
+    """
+
+    witness_name = models.CharField(
+        max_length=150, verbose_name="نام شاهد / فرد اظهارکننده"
+    )
+    witness_national_id = models.CharField(
+        max_length=10, blank=True, verbose_name="کد ملی شاهد (اختیاری)"
+    )
+    witness_phone = models.CharField(
+        max_length=11, blank=True, verbose_name="شماره تماس شاهد (اختیاری)"
+    )
+    statement_datetime = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان اخذ اظهارات"
+    )
+
+    class Meta:
+        verbose_name = "استشهاد شاهد"
+        verbose_name_plural = "استشهادات شاهدان"
+
     def allowed_media_types(self):
-        return ['PHOTO', 'VID', 'AUD']
+        return ["PHOTO", "VIDEO", "AUDIO"]
+
+
+# ────────────────────────────────────────────────
+#          2. شواهد زیستی / پزشکی
+# ────────────────────────────────────────────────
 
 
 class BiologicalEvidence(Evidence):
-    is_accepted = models.BooleanField(default=False)
+    """
+    شواهد زیستی – نیاز به بررسی Coroner / بانک داده
+    """
 
-    # TODO: نتیجۀ پیگیری
+    collected_at = models.DateTimeField(verbose_name="زمان جمع‌آوری نمونه")
+    collection_location = models.CharField(
+        max_length=300, verbose_name="محل دقیق جمع‌آوری"
+    )
+
+    # نتایج بررسی (بعداً پر می‌شود)
+    coroner_result = models.TextField(
+        blank=True, verbose_name="نتیجه بررسی پزشکی قانونی"
+    )
+    coroner_verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="تاریخ تأیید پزشکی قانونی"
+    )
+    db_match_result = models.TextField(
+        blank=True, verbose_name="نتیجه تطبیق با بانک داده هویتی"
+    )
+    db_match_verified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="تاریخ تطبیق بانک داده"
+    )
+
+    coroner = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verified_biological_evidences",
+        verbose_name="پزشک قانونی تأییدکننده",
+    )
+
+    class Meta:
+        verbose_name = "شاهد زیستی/پزشکی"
+        verbose_name_plural = "شواهد زیستی و پزشکی"
 
     def allowed_media_types(self):
-        return ['PHOTO']
+        return ["PHOTO"]  # معمولاً فقط تصویر
+
+
+# ────────────────────────────────────────────────
+#          3. وسیله نقلیه
+# ────────────────────────────────────────────────
 
 
 class VehicleEvidence(Evidence):
-    model = models.CharField(max_length=255)
-    license_plate = models.CharField(max_length=13)
-    color = models.CharField(max_length=30)
-    serial_number = models.CharField(max_length=255)
+    """
+    مدرک وسیله نقلیه – یا پلاک یا سریال (انحصاری)
+    """
 
-    def allowed_media_types(self):
-        return []
+    vehicle_model = models.CharField(max_length=100, verbose_name="مدل خودرو")
+    color = models.CharField(max_length=50, verbose_name="رنگ")
+    license_plate = models.CharField(
+        max_length=20, blank=True, verbose_name="شماره پلاک"
+    )
+    serial_number = models.CharField(
+        max_length=50, blank=True, verbose_name="شماره شاسی / VIN / سریال"
+    )
 
     def clean(self):
-        return (self.license_plate is not None and self.serial_number is None) or (
-                self.license_plate is None and self.serial_number is not None)
+        has_plate = bool(self.license_plate.strip())
+        has_serial = bool(self.serial_number.strip())
 
+        if has_plate and has_serial:
+            raise ValidationError(
+                "شماره پلاک و شماره سریال نمی‌توانند همزمان مقدار داشته باشند."
+            )
+        if not has_plate and not has_serial:
+            raise ValidationError(
+                "حداقل یکی از فیلدهای پلاک یا شماره سریال باید پر شود."
+            )
 
-class IdDocumentEvidence(Evidence):
-    owner_name = models.CharField(max_length=255)
+    class Meta:
+        verbose_name = "مدرک وسیله نقلیه"
+        verbose_name_plural = "مدارک وسایل نقلیه"
 
     def allowed_media_types(self):
-        return []
+        return ["PHOTO"]
 
 
-class IdDocumentProperty(models.Model):
-    id_document = models.ForeignKey(IdDocumentEvidence, on_delete=models.CASCADE, related_name='properties')
-    key = models.CharField(max_length=255)
-    value = models.CharField(max_length=255)
+# ────────────────────────────────────────────────
+#          4. مدارک شناسایی
+# ────────────────────────────────────────────────
 
 
-class OtherEvidences(Evidence):
-    detail = models.CharField(max_length=255)
-    # TODO 
+class IdentityDocumentEvidence(Evidence):
+    """
+    مدرک شناسایی پیدا شده – اطلاعات کلید-مقدار دلخواه
+    """
+
+    presumed_owner_name = models.CharField(
+        max_length=150, blank=True, verbose_name="نام احتمالی صاحب مدرک"
+    )
+
+    class Meta:
+        verbose_name = "مدرک شناسایی"
+        verbose_name_plural = "مدارک شناسایی پیدا شده"
+
+
+class IdentityDocumentField(models.Model):
+    """
+    فیلدهای کلید-مقدار برای مدرک شناسایی (انعطاف‌پذیر)
+    """
+
+    document = models.ForeignKey(
+        IdentityDocumentEvidence, on_delete=models.CASCADE, related_name="fields"
+    )
+    key = models.CharField(
+        max_length=100, verbose_name="عنوان فیلد (مثلاً شماره کارت، تاریخ صدور)"
+    )
+    value = models.CharField(max_length=255, verbose_name="مقدار")
+    order = models.PositiveSmallIntegerField(default=0, verbose_name="ترتیب نمایش")
+
+    class Meta:
+        ordering = ["order", "key"]
+        unique_together = [["document", "key"]]
+
+
+# ────────────────────────────────────────────────
+#          5. سایر شواهد (ساده)
+# ────────────────────────────────────────────────
+
+
+class OtherEvidence(Evidence):
+    """
+    سایر موارد – فقط عنوان + توضیح
+    """
+
+    # می‌تواند subtype یا tag داشته باشد اگر بعداً نیاز شد
+    class Meta:
+        verbose_name = "سایر شواهد"
+        verbose_name_plural = "سایر شواهد"
+
+    def allowed_media_types(self):
+        return ["PHOTO", "VIDEO", "AUDIO", "DOCUMENT"]
+
+
+# ────────────────────────────────────────────────
+#          رسانه‌های ضمیمه (مشترک)
+# ────────────────────────────────────────────────
 
 
 class EvidenceMedia(models.Model):
-    MEDIA_TYPES = [
-        ('PHOTO', 'Photo'),
-        ('VID', 'Video'),
-        ('AUD', 'Audio'),
+    MEDIA_TYPE_CHOICES = [
+        ("PHOTO", "تصویر"),
+        ("VIDEO", "ویدئو"),
+        ("AUDIO", "صوت"),
+        ("DOCUMENT", "سند / PDF"),
     ]
-    evidence = models.ForeignKey(Evidence, on_delete=models.CASCADE, related_name='media')
-    file = models.FileField(upload_to='evidence_media/%Y/%m/%d')
-    media_type = models.CharField(max_length=20, choices=MEDIA_TYPES)
+
+    evidence = models.ForeignKey(
+        Evidence, on_delete=models.CASCADE, related_name="media"
+    )
+    file = models.FileField(upload_to="evidence_media/%Y/%m/%d/", verbose_name="فایل")
+    media_type = models.CharField(
+        max_length=20, choices=MEDIA_TYPE_CHOICES, verbose_name="نوع رسانه"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان آپلود")
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="آپلودکننده"
+    )
+    description = models.CharField(
+        max_length=255, blank=True, verbose_name="توضیح کوتاه فایل"
+    )
 
     def clean(self):
-        if self.media_type not in self.evidence.allowed_media_types():
-            raise ValidationError("Evidence media type '{}' is not allowed".format(self.media_type))
+        # اعتبارسنجی نوع رسانه بر اساس دسته شواهد
+        allowed = self.evidence.allowed_media_types()
+        if self.media_type not in allowed:
+            raise ValidationError(
+                f"نوع رسانه {self.media_type} برای این دسته شواهد مجاز نیست. "
+                f"مجاز: {', '.join(allowed)}"
+            )
+
+    class Meta:
+        verbose_name = "فایل شواهد"
+        verbose_name_plural = "فایل‌های شواهد"
