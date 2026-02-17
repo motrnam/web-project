@@ -13,12 +13,12 @@ from .models import (
 )
 from .serializers import (
     RegisterComplainSerializer, ComplainantSerializer, CrimeSceneReportSerializer,
-    CrimeSceneWitnessSerializer
+    CrimeSceneWitnessSerializer,CaseSerializer
 )
 from users.permissions import (
     IsPoliceNotCadet, CanSubmitComplaint, IsCadetReviewer, IsOfficerReviewer
 )
-
+from interrogation.serializers import SuspectSerializer
 
 class RegisterComplainViewSet(viewsets.ModelViewSet):
     queryset = RegisterComplain.objects.all()
@@ -148,6 +148,7 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
 
         complain.save()
         return Response(RegisterComplainSerializer(complain).data)
+    
 
     @swagger_auto_schema(
         method='post',
@@ -302,4 +303,27 @@ class CrimeSceneReportViewSet(viewsets.ModelViewSet):
         serializer = ComplainantSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(case=report.case)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class CaseViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Case.objects.all()
+    serializer_class = CaseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="Add a suspect to a case",
+        request_body=SuspectSerializer,
+    )
+    @action(detail=True, methods=['post'])
+    def add_suspect(self, request, pk=None):
+        case = self.get_object()
+
+        if case.status != "OPEN":
+            raise ValidationError("You cannot add suspects unless the case is OPEN")
+
+        serializer = SuspectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(case=case, added_by=request.user)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)

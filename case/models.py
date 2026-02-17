@@ -190,7 +190,7 @@ class CrimeSceneReport(models.Model):
     )
     supervisor = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
+        on_delete=models.RESTRICT,
         null=True,
         blank=True,
         related_name="approved_crime_scenes",
@@ -198,13 +198,6 @@ class CrimeSceneReport(models.Model):
     )
     approved_at = models.DateTimeField(null=True, blank=True)
 
-    # case = models.OneToOneField(
-    #     "Case",
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name="crime_scene_report",
-    # )
 
     class Meta:
         verbose_name = "گزارش صحنه جرم"

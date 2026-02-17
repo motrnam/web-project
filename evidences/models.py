@@ -128,7 +128,7 @@ class BiologicalEvidence(Evidence):
 
     coroner = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
+        on_delete=models.RESTRICT,
         null=True,
         blank=True,
         related_name="verified_biological_evidences",

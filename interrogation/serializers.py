@@ -1,8 +1,5 @@
 from rest_framework import serializers
-from .models import Suspect
-from .models import User, Case  # Adjust imports based on your app structure
-from .models import VerdictStatus, PoliceChiefApproval  # Import your choice classes
-from .models import Interrogation, Suspect, User
+from .models import Interrogation, Suspect, Court, VerdictStatus
 from django.core.exceptions import ValidationError
 
 
@@ -21,7 +18,7 @@ class SuspectSerializer(serializers.ModelSerializer):
             "person_details",
             "case_details",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "case","person"]
 
     def get_person_details(self, obj):
         """Return basic user information"""
@@ -55,7 +52,6 @@ class SuspectSerializer(serializers.ModelSerializer):
 
 
 class InterrogationSerializer(serializers.ModelSerializer):
-    suspect_details = serializers.SerializerMethodField(read_only=True)
     interrogator_sergeant_details = serializers.SerializerMethodField(read_only=True)
     interrogator_detective_details = serializers.SerializerMethodField(read_only=True)
 
@@ -71,33 +67,9 @@ class InterrogationSerializer(serializers.ModelSerializer):
             "capitan_comment",
             "capitan_verdict",
             "chief_approved",
-            "suspect_details",
             "interrogator_sergeant_details",
             "interrogator_detective_details",
         ]
-        read_only_fields = [
-            "id",
-            "suspect",
-            "chief_approved",
-            "capitan_verdict",
-            "sergeant_score",
-            "detective_score",
-            "capitan_comment",
-        ]
-
-    def get_suspect_details(self, obj):
-        """Return basic suspect information"""
-        if obj.suspect:
-            return {
-                "id": obj.suspect.id,
-                "person_id": obj.suspect.person_id,
-                "person_name": obj.suspect.person.get_full_name()
-                if obj.suspect.person
-                else None,
-                "case_id": obj.suspect.case_id,
-                "suspect_status": obj.suspect.suspect_status,
-            }
-        return None
 
     def get_interrogator_sergeant_details(self, obj):
         """Return sergeant information"""
@@ -121,6 +93,58 @@ class InterrogationSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def create(self, validated_data):
+        raise Exception("don't use this class as serializer")
+
+    def update(self, instance, validated_data):
+        """Update method with model's clean validation"""
+        raise Exception("don't use this class as serializer")
+
+
+class InterrogationListSerializer(serializers.ModelSerializer):
+    sergeant_name = serializers.CharField(
+        source="interrogator_sergeant.get_full_name", read_only=True
+    )
+    detective_name = serializers.CharField(
+        source="interrogator_detective.get_full_name", read_only=True
+    )
+
+    class Meta:
+        model = Interrogation
+        fields = [
+            "id",
+            "sergeant_name",
+            "detective_name",
+            "sergeant_score",
+            "detective_score",
+            "capitan_verdict",
+            "chief_approved",
+        ]
+
+
+class InterrogationWriteSerializer(serializers.ModelSerializer):
+    """
+    Write-only serializer for Interrogation model
+    Used for create and update operations
+    """
+
+    class Meta:
+        model = Interrogation
+        fields = [
+            "id",
+            "suspect",
+            "interrogator_sergeant",
+            "interrogator_detective",
+        ]
+        read_only_fields = ["id","suspect"]
+        extra_kwargs = {
+            "interrogator_sergeant": {"required": True, "allow_null": False},
+            "interrogator_detective": {"required": True, "allow_null": False},
+            "suspect": {"required": True, "allow_null": False},
+            "sergeant_score": {"min_value": 1, "max_value": 100},
+            "detective_score": {"min_value": 1, "max_value": 100},
+        }
+
     def validate_interrogator_sergeant(self, value):
         """Validate that sergeant belongs to Sergeant group"""
         if not value.groups.filter(name="Sergeant").exists():
@@ -137,30 +161,14 @@ class InterrogationSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def validate_sergeant_score(self, value):
-        """Additional validation for sergeant_score if needed"""
-        if value < 1 or value > 100:
-            raise serializers.ValidationError("Score must be between 1 and 100.")
-        return value
-
-    def validate_detective_score(self, value):
-        """Additional validation for detective_score if needed"""
-        if value < 1 or value > 100:
-            raise serializers.ValidationError("Score must be between 1 and 100.")
-        return value
-
     def validate(self, data):
-        """
-        Cross-field validation
-        """
-        # Check if sergeant and detective are the same person
+        """Cross-field validation"""
         if data.get("interrogator_sergeant") and data.get("interrogator_detective"):
             if data["interrogator_sergeant"] == data["interrogator_detective"]:
                 raise serializers.ValidationError(
                     "Sergeant and Detective must be different officers."
                 )
 
-        # Validate that suspect exists (though ForeignKey handles this)
         if (
             data.get("suspect")
             and not Suspect.objects.filter(id=data["suspect"].id).exists()
@@ -170,14 +178,12 @@ class InterrogationSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        """Create method with model's clean validation"""
+        """Create with model validation"""
         instance = Interrogation(**validated_data)
 
-        # Call the model's clean method to run the group validations
         try:
             instance.clean()
         except ValidationError as e:
-            # Convert model ValidationError to DRF ValidationError
             raise serializers.ValidationError(
                 e.message_dict if hasattr(e, "message_dict") else str(e)
             )
@@ -186,18 +192,28 @@ class InterrogationSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        """Update method with model's clean validation"""
+        """Update with model validation"""
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
-        # Call the model's clean method to run the group validations
         try:
             instance.clean()
         except ValidationError as e:
-            # Convert model ValidationError to DRF ValidationError
             raise serializers.ValidationError(
                 e.message_dict if hasattr(e, "message_dict") else str(e)
             )
 
         instance.save()
         return instance
+
+
+class CourtSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Court
+        fields = "__all__"
+        read_only_fields = ["id", "created_at"]
+
+
+class CapitanCommentSerializer(serializers.Serializer):
+    comment = serializers.CharField()  # an string
+    verdict = serializers.ChoiceField(choices=VerdictStatus.choices)

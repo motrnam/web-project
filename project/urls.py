@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 from drf_yasg.views import get_schema_view
@@ -23,34 +24,44 @@ from rest_framework import permissions
 
 from backend import views
 from users import views as new_views
-# from case.views import RegisterComplainViewSet,CaseViewSet
+
+from case.views import CaseViewSet,CrimeSceneReportViewSet
+from interrogation import views as p_view
 
 schema_view = get_schema_view(
-   openapi.Info(
-      title="Snippets API",
-      default_version='v1',
-      description="Test description",
-      terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="contact@snippets.local"),
-      license=openapi.License(name="BSD License"),
-   ),
-   public=True,
-#    permission_classes=(permissions.AllowAny,),
+    openapi.Info(
+        title="Snippets API",
+        default_version="v1",
+        description="Test description",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@snippets.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    #    permission_classes=(permissions.AllowAny,),
 )
 
 router = DefaultRouter()
-router.register(r'register', new_views.UserViewSet, basename='register')
+router.register(r"register", new_views.UserViewSet, basename="register")
+router.register(r"suspect", p_view.SuspectViewSet, basename="suspect")
+router.register(r"interrogation",p_view.InterrogationViewSet,basename="interrogation")
 # router.register(r'registercomplain',RegisterComplainViewSet,basename='complain')
-# router.register(r'case',CaseViewSet,basename='case')
+router.register(r'case',CaseViewSet,basename='case')
 # router.register(r'profiles', views.ProfileViewSet, basename='profiles')
+router.register(r'CrimeSceneReport',CrimeSceneReportViewSet,basename='CrimeSceneReport')
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('swagger.<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('', include(router.urls)),
-    path('login/', views.LoginAPIView.as_view(), name='login'),
-    path('logout/', views.LogoutAPIView.as_view(), name='logout'),
-    
+    path("admin/", admin.site.urls),
+    path(
+        "swagger.<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
+    ),
+    path(
+        "swagger/",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
+    path("", include(router.urls)),
+    path("login/", views.LoginAPIView.as_view(), name="login"),
+    path("logout/", views.LogoutAPIView.as_view(), name="logout"),
 ]

@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'users',
     'backend',
     'evidences',
-    'case'
+    'case',
+    'interrogation'
 ]
 
 MIDDLEWARE = [

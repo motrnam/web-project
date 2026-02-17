@@ -26,7 +26,7 @@ class SuspectStatus(models.TextChoices):
     MOST_WANTED = "MOST_WANTED", "most wanted"
 
 
-class Suspect(models):
+class Suspect(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     person = models.ForeignKey(User, on_delete=models.RESTRICT)
     case = models.ForeignKey(Case, on_delete=models.RESTRICT)
@@ -36,17 +36,17 @@ class Suspect(models):
     )
 
 
-class Interrogation(models):
+class Interrogation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     suspect = models.ForeignKey(Suspect, on_delete=models.RESTRICT)
-    interrogator_sergeant = models.ForeignKey(User, on_delete=models.RESTRICT)
-    interrogator_detective = models.ForeignKey(User, on_delete=models.RESTRICT)
+    interrogator_sergeant = models.ForeignKey(User, on_delete=models.RESTRICT,related_name="interrogation_sergeant")
+    interrogator_detective = models.ForeignKey(User, on_delete=models.RESTRICT,related_name="interrogation_detective")
     sergeant_score = models.IntegerField(
-        default=5, validators=[MaxValueValidator(100), MinValueValidator(1)]
+        default=5, validators=[MaxValueValidator(10), MinValueValidator(1)]
     )
 
     detective_score = models.IntegerField(
-        default=5, validators=[MaxValueValidator(100), MinValueValidator(1)]
+        default=5, validators=[MaxValueValidator(10), MinValueValidator(1)]
     )
 
     capitan_comment = models.CharField(max_length=100, null=True, blank=True)
@@ -63,15 +63,14 @@ class Interrogation(models):
         if not self.interrogator_sergeant.groups.filter(name = "Sergeant").exists():
             raise ValidationError("`interrogator_detective` must contain `Sergeant` group")
         
-    def save(self, *args, **kwargs):
-        self.full_clean()  
-        super().save(*args, **kwargs)
+    
 
-class Court(models):
+class Court(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    judge = models.ForeignKey(User, on_delete=models.SET_NULL)
+    judge = models.ForeignKey(User, on_delete=models.RESTRICT)
     interrogation = models.ForeignKey(Interrogation, on_delete=models.RESTRICT)
     created_at = models.DateField(auto_now_add=True)
     final_verdict = models.CharField(
         max_length=20, choices=VerdictStatus.choices, null=True
     )
+    date = models.DateField()
