@@ -5,11 +5,10 @@ from django.contrib.auth import get_user_model
 
 from .models import Detection, DetectionBoard, Lead, Yarn, SuspectsSuggested
 from evidences.models import Evidence
+from evidences.serializers import EvidencePolymorphicSerializer
+from interrogation.models import Suspect
 
 User = get_user_model()
-
-# unnecessary import
-from interrogation.models import Suspect
 
 
 class DetectionSerializer(serializers.ModelSerializer):
@@ -22,7 +21,7 @@ class DetectionSerializer(serializers.ModelSerializer):
 class LeadSerializer(serializers.ModelSerializer):
     board_id = serializers.IntegerField(write_only=True)
     evidence_details = serializers.SerializerMethodField(read_only=True)
-    content = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # ← Add this
+    content = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Lead
@@ -33,13 +32,9 @@ class LeadSerializer(serializers.ModelSerializer):
         read_only_fields = ['board']
 
     def get_evidence_details(self, obj):
+        """Use the existing EvidencePolymorphicSerializer for evidence details."""
         if obj.evidence:
-            return {
-                'id': obj.evidence.id,
-                'title': obj.evidence.title,
-                'type': obj.evidence.evidence_type,
-                # Add other relevant evidence fields
-            }
+            return EvidencePolymorphicSerializer(obj.evidence, context=self.context).data
         return None
 
     def validate(self, data):

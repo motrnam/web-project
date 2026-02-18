@@ -164,7 +164,7 @@ class LeadViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Ensure the board belongs to the current detective
-        board_id = self.request.data.get('board')
+        board_id = self.request.data.get('board_id')
         board = get_object_or_404(
             DetectionBoard,
             id=board_id,
