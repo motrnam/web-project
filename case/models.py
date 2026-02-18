@@ -267,8 +267,12 @@ class Case(models.Model):
         return f"پرونده {self.case_number or self.id}"
 
     def save(self, *args, **kwargs):
-        if not self.case_number:
+        if not self.case_number and self.created_at:
             year = self.created_at.year
+            count = Case.objects.filter(created_at__year=year).count() + 1
+            self.case_number = f"{year}/{count:04d}"
+        elif self.case_number:
+            year = 5000
             count = Case.objects.filter(created_at__year=year).count() + 1
             self.case_number = f"{year}/{count:04d}"
         super().save(*args, **kwargs)

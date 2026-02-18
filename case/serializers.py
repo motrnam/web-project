@@ -139,7 +139,7 @@ class CrimeSceneReportSerializer(serializers.ModelSerializer):
             'witnesses_count',
         ]
         read_only_fields = [
-            'id', 'reporter', 'reported_at', 'approved_at', 'case', 'witnesses', 'witnesses_count'
+            'id', 'reporter', 'reported_at', 'approved_at', 'case', 'witnesses', 'witnesses_count',
         ]
 
     def get_witnesses_count(self, obj):
@@ -169,3 +169,6 @@ class CaseSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'created_at', 'case_number', 'created_by_full_name', 'complainants'
         ]
+
+class EmptySerializer(serializers.Serializer):
+    pass

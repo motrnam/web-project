@@ -12,7 +12,7 @@ from .models import (
     ComplainStatus, CrimeSceneReportStatus, ComplainantStatus
 )
 from .serializers import (
-    RegisterComplainSerializer, ComplainantSerializer, CrimeSceneReportSerializer,
+    EmptySerializer, RegisterComplainSerializer, ComplainantSerializer, CrimeSceneReportSerializer,
     CrimeSceneWitnessSerializer,CaseSerializer
 )
 from users.permissions import (
@@ -44,7 +44,7 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
         operation_description="ارسال شکایت به کارآموز برای بررسی (تغییر وضعیت به PENDING_CADET)",
         responses={200: RegisterComplainSerializer(many=False)}
     )
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'],serializer_class=EmptySerializer)
     def submit(self, request, pk=None):
         complain = self.get_object()
         if not complain.can_submit():

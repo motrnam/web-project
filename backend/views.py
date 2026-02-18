@@ -72,25 +72,25 @@ class LoginAPIView(APIView):
             username=username,
             password=password
         )
-        print(f"{username = } , {password=}")
+        # print(f"{username = } , {password=}")
         if user:
             login(request, user)
-            print(f"{user.password = }") # prints hashed (runserver)
+            # print(f"{user.password = }") # prints hashed (runserver)
             return Response(
                 {"message": "Login successful"},
                 status=status.HTTP_200_OK
             )
-        else:
-            try:
-                user = User.objects.get(username=username) # print plain text (running test)
-                print(f"{user.password = }")
-                if user.check_password(password):
-                    print("Password is correct but authentication failed - backend issue")
-                else:
-                    print("Password is incorrect")
-                    print(f"Password hash: {user.password}")
-            except User.DoesNotExist:
-                print("user not")
+        # else:
+        #     try:
+        #         user = User.objects.get(username=username) # print plain text (running test)
+        #         print(f"{user.password = }")
+        #         if user.check_password(password):
+        #             print("Password is correct but authentication failed - backend issue")
+        #         else:
+        #             print("Password is incorrect")
+        #             print(f"Password hash: {user.password}")
+        #     except User.DoesNotExist:
+        #         print("user not")
 
         return Response(
             {"error": "Invalid credentials4"},
