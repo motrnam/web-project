@@ -10,8 +10,6 @@ User = get_user_model()
 
 class CanRegisterAndLogin(TestCase):
     def setUp(self):
-        self.normal_group = Group.objects.get_or_create(name="Base User")[0]
-        self.cadet_group = Group.objects.get_or_create(name="Cadet")[0]
         self.client = APIClient()
         
     def test_can_register_ok_payload(self):
@@ -78,13 +76,16 @@ class CanRegisterAndLogin(TestCase):
         
         response = self.client.post("/register/",user_data1)
         self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
-        
         user_data_login = {
             "username":"ShahAbbas1",
             "password": "prison"
         }
         
+        self.assertEqual(User.objects.count(),1,"Not  user in the database")
+        self.assertEqual(User.objects.get(username = 'ShahAbbas1').national_id,"0987634321","Very bad")
+        
         response = self.client.post("/login/",user_data_login)
+        print(response.data)
         self.assertEqual(response.status_code,status.HTTP_200_OK)
         
         ping_response = self.client.get("/register/ping/")
@@ -114,3 +115,27 @@ class CanRegisterAndLogin(TestCase):
         response = self.client.post("/login/",user_data_login)
         self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED)
         self.assertIn("error",response.data)
+        
+    def test_assign_role(self):
+        admin_data = {
+            "username": "admin",
+            "national_id": "0987654334",
+            "full_name": "Joe Dalton",
+            "phone_number": "09123446789",
+            "email":"lukxxxe@dalton.com",
+            "password": "prison"
+        }
+        response = self.client.post("/register/",admin_data)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
+        
+        user_data = {
+            "username": "user",
+            "national_id": "0987654398",
+            "full_name": "Joe Dalton",
+            "phone_number": "09123146329",
+            "email":"lukxdxxe@dalton.com",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")

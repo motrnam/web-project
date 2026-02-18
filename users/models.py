@@ -1,9 +1,8 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-
+from django.contrib.auth.models import AbstractUser, UserManager
 
 class User(AbstractUser):
-
+    objects = UserManager()
     national_id = models.CharField(
         max_length=10,
         unique=True,

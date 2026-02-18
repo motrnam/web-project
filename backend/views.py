@@ -7,56 +7,17 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate, login
 from rest_framework.authtoken.models import Token
+from django.contrib.auth import get_user_model
+
+import logging
+logger = logging.getLogger(__name__)
 
 
-from .serializers import (
-    ProfileSerializer,
-    RegisterSerializer,
-)
-from .models import Profile
 
 
-class RegisterViewSet(viewsets.ModelViewSet):
-    serializer_class = RegisterSerializer
-    queryset = Profile.objects.all()
-    http_method_names = ['post']
+User = get_user_model()
     
-    @swagger_auto_schema(
-        operation_description="Register a new user",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username'),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Password'),
-                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description='First Name'),
-                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description='Last Name'),
-                'national_id': openapi.Schema(type=openapi.TYPE_STRING, description='National ID'),
-                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description='Phone Number'),
-                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email Address'),
-            },
-            required=['username', 'password', 'national_id', 'phone_number', 'email']
-        ),
-        responses={
-            201: RegisterSerializer,
-            400: openapi.Response(description="Bad Request"),
-        }
-    )    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-class ProfileViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = ProfileSerializer
-    queryset = Profile.objects.all()
-    http_method_names = ['get']
 
-    @action(detail=False, methods=['get'], permission_classes =[permissions.IsAuthenticated])
-    def me(self, request):
-        profile = self.get_queryset().get(user=request.user)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
     
 class LoginAPIView(APIView):
     @swagger_auto_schema(
@@ -78,31 +39,30 @@ class LoginAPIView(APIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
-        
         if not username:
             email = request.data.get("email")
             if email:
                 try:
-                    profile = Profile.objects.get(email=email)
-                    username = profile.user.username
-                except Profile.DoesNotExist:
-                    raise exceptions.AuthenticationFailed("Invalid credentials")
+                    profile = User.objects.get(email=email)
+                    username = profile.username
+                except User.DoesNotExist:
+                    raise exceptions.AuthenticationFailed("Invalid credentials1")
         if not username:
             national_id = request.data.get("national_id")
             if national_id:
                 try:
-                    profile = Profile.objects.get(national_id=national_id)
-                    username = profile.user.username
-                except Profile.DoesNotExist:
-                    raise exceptions.AuthenticationFailed("Invalid credentials")
+                    profile = User.objects.get(national_id=national_id)
+                    username = profile.username
+                except User.DoesNotExist:
+                    raise exceptions.AuthenticationFailed("Invalid credentials2")
         if not username:
             phone = request.data.get("phone_number")
             if phone:
                 try:
-                    profile = Profile.objects.get(phone_number=phone)
-                    username = profile.user.username
-                except Profile.DoesNotExist:
-                    raise exceptions.AuthenticationFailed("Invalid credentials")
+                    profile = User.objects.get(phone_number=phone)
+                    username = profile.username
+                except User.DoesNotExist:
+                    raise exceptions.AuthenticationFailed("Invalid credentials3")
                 
         if not username or not password:
             raise exceptions.ParseError("Username and password are required")
@@ -112,16 +72,28 @@ class LoginAPIView(APIView):
             username=username,
             password=password
         )
-
+        print(f"{username = } , {password=}")
         if user:
             login(request, user)
+            print(f"{user.password = }") # prints hashed (runserver)
             return Response(
                 {"message": "Login successful"},
                 status=status.HTTP_200_OK
             )
+        else:
+            try:
+                user = User.objects.get(username=username) # print plain text (running test)
+                print(f"{user.password = }")
+                if user.check_password(password):
+                    print("Password is correct but authentication failed - backend issue")
+                else:
+                    print("Password is incorrect")
+                    print(f"Password hash: {user.password}")
+            except User.DoesNotExist:
+                print("user not")
 
         return Response(
-            {"error": "Invalid credentials"},
+            {"error": "Invalid credentials4"},
             status=status.HTTP_401_UNAUTHORIZED
         )
 

@@ -131,3 +131,33 @@ class CanRegisterComplain(TestCase):
         
         self.client2.force_authenticate(user=self.cadet_group)
 
+class CanRegisterComplainUsingEndpoints(TestCase):
+    def setUp(self):
+        admin_data = {
+            "username": "admin",
+            "national_id": "0987654321",
+            "full_name": "NaserAlDinShah",
+            "phone_number": "09123456789",
+            "email":"luke@dalton.com",
+            "password": "prison"
+        }
+        self.client = APIClient()
+        self.client.post("/register/",admin_data)
+        self.admin_login = {
+            "username": admin_data['username'],
+            "password": admin_data['password']
+        }
+        
+    def test_can_register_ok_payload(self):
+        user_data = {
+            "username": "lucky_luke",
+            "national_id": "0987654321",
+            "full_name": "Joe Dalton",
+            "phone_number": "09123456789",
+            "email":"luke@dalton.com",
+            "password": "prison"
+        }
+        
+        response = self.client.post("/register/",user_data)
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED,"OK")
+        self.assertEqual(User.objects.count() , 1 , f"We have {User.objects.count()} user(s) in the database")
