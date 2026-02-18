@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'case',
     'detection',
     'interrogation',
+    'rewards.apps.RewardsConfig',
 ]
 
 MIDDLEWARE = [
