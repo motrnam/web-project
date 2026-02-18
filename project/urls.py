@@ -25,7 +25,7 @@ from rest_framework import permissions
 from backend import views
 from users import views as new_views
 
-from case.views import CaseViewSet,CrimeSceneReportViewSet
+from case.views import CaseViewSet, CrimeSceneReportViewSet
 from interrogation import views as p_view
 
 schema_view = get_schema_view(
@@ -44,12 +44,11 @@ schema_view = get_schema_view(
 router = DefaultRouter()
 router.register(r"register", new_views.UserViewSet, basename="register")
 router.register(r"suspect", p_view.SuspectViewSet, basename="suspect")
-router.register(r"interrogation",p_view.InterrogationViewSet,basename="interrogation")
+router.register(r"interrogation", p_view.InterrogationViewSet, basename="interrogation")
 # router.register(r'registercomplain',RegisterComplainViewSet,basename='complain')
-router.register(r'case',CaseViewSet,basename='case')
+router.register(r'case', CaseViewSet, basename='case')
 # router.register(r'profiles', views.ProfileViewSet, basename='profiles')
-router.register(r'CrimeSceneReport',CrimeSceneReportViewSet,basename='CrimeSceneReport')
-
+router.register(r'CrimeSceneReport', CrimeSceneReportViewSet, basename='CrimeSceneReport')
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -64,5 +63,6 @@ urlpatterns = [
     path("", include(router.urls)),
     path("login/", views.LoginAPIView.as_view(), name="login"),
     path("logout/", views.LogoutAPIView.as_view(), name="logout"),
+    path('api/detection/', include('detection.urls')),
     path('api/rewards/', include('rewards.urls')),
 ]

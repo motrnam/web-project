@@ -1,4 +1,4 @@
-#detection/models.py
+# detection/models.py
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -87,7 +87,7 @@ class SuspectsSuggested(models.Model):
     detective_reasons = models.TextField()
     state = models.SmallIntegerField(choices=states, default=0)
     feedback = models.TextField(blank=True)
-    suspects = models.ManyToManyField(Suspect, blank=True)
+    suspects = models.ManyToManyField(User, blank=True)
 
     class Meta:
         ordering = ["-time_suggested"]
