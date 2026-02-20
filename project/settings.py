@@ -43,7 +43,9 @@ INSTALLED_APPS = [
     'backend',
     'evidences',
     'case',
-    'interrogation'
+    'detection',
+    'interrogation',
+    'rewards.apps.RewardsConfig',
 ]
 
 MIDDLEWARE = [

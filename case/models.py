@@ -91,12 +91,12 @@ class RegisterComplain(models.Model):
 
     def can_submit(self):
         return (
-            self.status
-            in (
-                ComplainStatus.DRAFT,
-                ComplainStatus.RETURNED_TO_COMPLAINANT,
-            )
-            and self.revision_count < self.max_revisions
+                self.status
+                in (
+                    ComplainStatus.DRAFT,
+                    ComplainStatus.RETURNED_TO_COMPLAINANT,
+                )
+                and self.revision_count < self.max_revisions
         )
 
 
@@ -198,7 +198,6 @@ class CrimeSceneReport(models.Model):
     )
     approved_at = models.DateTimeField(null=True, blank=True)
 
-
     class Meta:
         verbose_name = "گزارش صحنه جرم"
         verbose_name_plural = "گزارش‌های صحنه جرم"
@@ -252,7 +251,7 @@ class Case(models.Model):
         User, on_delete=models.RESTRICT, related_name="created_cases"
     )
     crime_type = models.CharField(
-        max_length=20, choices=CrimeType.choices, verbose_name="نوع جرم",default=CrimeType.TYPE_1
+        max_length=20, choices=CrimeType.choices, verbose_name="نوع جرم", default=CrimeType.TYPE_1
     )
     case_number = models.CharField(max_length=32, unique=True, blank=True)
 
@@ -267,12 +266,12 @@ class Case(models.Model):
         return f"پرونده {self.case_number or self.id}"
 
     def save(self, *args, **kwargs):
+        # First, save the object to let Django set created_at
+        super().save(*args, **kwargs)
+
+        # Now generate case_number if needed
         if not self.case_number and self.created_at:
             year = self.created_at.year
             count = Case.objects.filter(created_at__year=year).count() + 1
             self.case_number = f"{year}/{count:04d}"
-        elif self.case_number:
-            year = 5000
-            count = Case.objects.filter(created_at__year=year).count() + 1
-            self.case_number = f"{year}/{count:04d}"
-        super().save(*args, **kwargs)
+            super().save(update_fields=['case_number'])
