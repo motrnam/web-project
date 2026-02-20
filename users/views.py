@@ -1,5 +1,5 @@
 # users/views.py
-from rest_framework import viewsets, permissions, status, exceptions
+from rest_framework import generics, viewsets, permissions, status, exceptions
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, UserSimpleSerializer, GrantSerializer
 from rest_framework.decorators import action
@@ -10,38 +10,14 @@ from django.contrib.auth.models import Group
 UserModel = get_user_model()
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class RegisterView(generics.CreateAPIView):
+    """فقط برای ثبت‌نام - POST /register/"""
+    serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
     queryset = UserModel.objects.all()
 
-    def get_serializer_class(self):
-        if self.action == "create":
-            return RegisterSerializer
-        if self.action == "grant_role":
-            return GrantSerializer
-        return UserSimpleSerializer
-
-    def get_permissions(self):
-        if self.action == "create":
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
-
-    @action(
-        detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated]
-    )
-    def ping(self, request):
-        res = {"username": request.user.username, "message": "success"}
-        if self.request.user.groups.filter(name="Administrator").exists():
-            res["role"] = "admin"
-        return Response(res, status=status.HTTP_200_OK)
-
-    @action(
-        detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated]
-    )
-    def role(self, request):
-        groups = request.user.groups.all()
-        return Response([group.name for group in groups])
-
     def perform_create(self, serializer):
+        # اگر اولین کاربر است، به او نقش Administrator داده می‌شود
         if not UserModel.objects.exists():
             user = serializer.save()
             admin_group = Group.objects.get_or_create(name="Administrator")[0]
@@ -49,9 +25,42 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    مدیریت کاربران - فقط برای Admin
+    GET /users/ - لیست کاربران
+    GET/PUT/PATCH/DELETE /users/{id}/ - مدیریت کاربر خاص
+    POST /users/grant-role/ - دادن نقش
+    """
+    queryset = UserModel.objects.all()
+    serializer_class = UserSimpleSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdministrator]
+
+    def get_serializer_class(self):
+        if self.action == "grant_role":
+            return GrantSerializer
+        return UserSimpleSerializer
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        """پروفایل کاربر فعلی - GET /users/me/"""
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def roles(self, request):
+        """نقش‌های کاربر فعلی - GET /users/roles/"""
+        groups = request.user.groups.all()
+        return Response({
+            "username": request.user.username,
+            "roles": [group.name for group in groups]
+        })
+
     @action(detail=False, methods=["post"], permission_classes=[IsAdministrator])
     def grant_role(self, request):
-        serializer = self.get_serializer(data=request.data)
+        """دادن نقش به کاربر - POST /users/grant-role/"""
+        serializer = GrantSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data["username"]
         role = serializer.validated_data["role"]

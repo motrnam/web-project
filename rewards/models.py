@@ -77,10 +77,11 @@ class RewardTip(models.Model):
         if self.status == RewardTipStatus.PENDING_REVIEW:
             return user.groups.filter(name__in=['Police Officer', 'Patrol Officer']).exists()
         if self.status == RewardTipStatus.SENT_TO_DETECTIVE:
-            # فقط کارآگاه مسئول پرونده/مظنون
-            if self.related_case and hasattr(self.related_case, 'detective'):
-                return user == getattr(self.related_case, 'detective', None)
+            # فقط کارآگاه مسئول پرونده/مظنون through Detection
+            if self.related_case and hasattr(self.related_case, 'detection') and self.related_case.detection:
+                return user == self.related_case.detection.detective
             if self.related_suspect and self.related_suspect.case:
-                return user == getattr(self.related_suspect.case, 'detective', None)
+                if hasattr(self.related_suspect.case, 'detection') and self.related_suspect.case.detection:
+                    return user == self.related_suspect.case.detection.detective
             return False
         return False

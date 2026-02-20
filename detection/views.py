@@ -1,19 +1,17 @@
 # detection/views.py
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-from .models import Detection, DetectionBoard, Lead, Yarn, SuspectsSuggested
+from .models import DetectionBoard, Lead, Yarn, SuspectsSuggested
 from interrogation.models import Suspect, Interrogation, InterrogationStatus, SuspectStatus
-from users.permissions import IsDetective
+from users.permissions import IsDetective, IsSergeant
 from .serializers import (
     DetectionBoardSerializer, LeadSerializer, YarnSerializer,
-    SuspectsSuggestedSerializer, DetectionSerializer,
+    SuspectsSuggestedSerializer,
     SubmitSuspectsSerializer, RejectFeedbackSerializer
 )
 
@@ -234,3 +232,113 @@ from rest_framework.response import Response
 @api_view(['GET'])
 def test_view(request):
     return Response({"message": "URLs are working!"})
+
+
+class SergeantSuggestionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for sergeants to review and approve/reject detective suggestions.
+    This is the CRITICAL missing piece that connects detection to interrogation!
+    """
+    serializer_class = SuspectsSuggestedSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSergeant]
+
+    def get_queryset(self):
+        """Return suggestions for cases where this sergeant is assigned."""
+        return SuspectsSuggested.objects.filter(
+            detection__sergeant=self.request.user
+        ).select_related('detection', 'detection__case').prefetch_related('suspects')
+
+    @action(detail=False, methods=['get'], url_path='pending')
+    def pending(self, request):
+        """Get all pending suggestions for this sergeant."""
+        pending_suggestions = self.get_queryset().filter(state=0)
+        serializer = self.get_serializer(pending_suggestions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    @transaction.atomic
+    def approve(self, request, pk=None):
+        """
+        Approve the detective's suspect suggestions.
+        This creates Suspect objects in the interrogation app and starts interrogations.
+        """
+        suggestion = self.get_object()
+
+        if suggestion.state != 0:
+            return Response(
+                {"error": "This suggestion has already been processed."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update suggestion state
+        suggestion.state = 1  # CONFIRMED
+        suggestion.save()
+
+        # Create Suspect objects for each suggested user
+        suspects_created = []
+        interrogations_created = []
+
+        for user in suggestion.suspects.all():
+            # Create Suspect
+            suspect, created = Suspect.objects.get_or_create(
+                person=user,
+                case=suggestion.detection.case,
+                defaults={
+                    'detail': f"تأیید شده توسط گروهبان بر اساس پیشنهاد کارآگاه: {suggestion.detective_reasons[:100]}",
+                    'suspect_status': SuspectStatus.WANTED,
+                    'added_by': request.user
+                }
+            )
+            suspects_created.append(suspect)
+
+            # Create Interrogation
+            interrogation = Interrogation.objects.create(
+                suspect=suspect,
+                interrogator_sergeant=request.user,
+                interrogator_detective=suggestion.detection.detective,
+                status=InterrogationStatus.PENDING_SCORES
+            )
+            interrogations_created.append(interrogation)
+
+        return Response({
+            'message': 'Suspects approved and interrogations started',
+            'suggestion_id': suggestion.id,
+            'suspects_count': len(suspects_created),
+            'interrogations_count': len(interrogations_created),
+            'suspects': [
+                {
+                    'id': str(s.id),
+                    'person': s.person.username,
+                    'status': s.suspect_status
+                } for s in suspects_created
+            ]
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    @transaction.atomic
+    def reject(self, request, pk=None):
+        """
+        Reject the detective's suspect suggestions with feedback.
+        """
+        suggestion = self.get_object()
+
+        if suggestion.state != 0:
+            return Response(
+                {"error": "This suggestion has already been processed."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = RejectFeedbackSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update suggestion state
+        suggestion.state = 2  # REJECTED
+        suggestion.feedback = serializer.validated_data['feedback']
+        suggestion.save()
+
+        return Response({
+            'message': 'Suggestion rejected',
+            'suggestion_id': suggestion.id,
+            'feedback': suggestion.feedback
+        }, status=status.HTTP_200_OK)

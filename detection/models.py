@@ -1,11 +1,11 @@
 # detection/models.py
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.exceptions import ValidationError
 
 from case.models import Case
 from evidences.models import Evidence
 from interrogation.models import Suspect
-from users.permissions import IsDetective, IsSergeant
 
 User = get_user_model()
 
@@ -23,18 +23,18 @@ class Lead(models.Model):
     title = models.CharField(max_length=255)
     board = models.ForeignKey(DetectionBoard, null=False, on_delete=models.CASCADE)
     lead_type = models.CharField(max_length=1, choices=LEAD_TYPES)
-    evidence = models.ForeignKey(Evidence, null=True, on_delete=models.RESTRICT)
-    content = models.TextField()  # Only for notes
+    evidence = models.ForeignKey(Evidence, null=True, blank=True, on_delete=models.RESTRICT)
+    content = models.TextField(blank=True, null=True)  # Only for notes
     position_x = models.FloatField()
     position_y = models.FloatField()
 
     def clean(self):
         if self.position_x <= 0 or self.position_x >= 1 or self.position_y <= 0 or self.position_y >= 1:
             raise ValidationError("Position arguments must be between 0 and 1")
-        if self.lead_type == 'E' and not (self.evidence is not None and self.content is None):
-            raise ValidationError('Lead must have a content for "Evidence" lead type.')
-        if self.lead_type == 'N' and not (self.evidence is None and self.content is not None):
-            raise ValidationError('Lead must have a content for "Note" lead type.')
+        if self.lead_type == 'E' and not (self.evidence is not None and not self.content):
+            raise ValidationError('Lead must have evidence and no content for "Evidence" lead type.')
+        if self.lead_type == 'N' and not (self.evidence is None and self.content):
+            raise ValidationError('Lead must have content and no evidence for "Note" lead type.')
 
 
 class Yarn(models.Model):
@@ -44,7 +44,7 @@ class Yarn(models.Model):
     def clean(self):
         if self.lead1.board != self.lead2.board:
             raise ValidationError("Board arguments must match")
-        if lead1 == lead2:
+        if self.lead1 == self.lead2:
             raise ValidationError("You cannot connect a lead to itself")
 
 
@@ -55,8 +55,8 @@ class Detection(models.Model):
         on_delete=models.RESTRICT,
         verbose_name="کارآگاه"
     )
-    case = models.OneToOneField(Case, null=False, on_delete=models.RESTRICT, verbose_name="پرونده")
-    detection_board = models.OneToOneField(DetectionBoard, on_delete=models.RESTRICT, verbose_name="تخته")
+    case = models.OneToOneField(Case, null=False, on_delete=models.RESTRICT, verbose_name="پرونده", related_name="detection")
+    detection_board = models.OneToOneField(DetectionBoard, on_delete=models.RESTRICT, verbose_name="تخته", related_name="detection")
     sergeant = models.ForeignKey(
         User,
         null=True,
@@ -67,9 +67,9 @@ class Detection(models.Model):
     )
 
     def clean(self):
-        if not IsDetective(self.detective):
+        if not self.detective.groups.filter(name='Detective').exists():
             raise ValidationError("کارآگاه باید کارآگاه باشد")
-        if not (self.sergeant is None or IsSergeant(self.sergeant)):
+        if self.sergeant and not self.sergeant.groups.filter(name='Sergeant').exists():
             raise ValidationError("گروهبان باید گروهبان باشد")
 
     def can_delete(self):
@@ -95,5 +95,5 @@ class SuspectsSuggested(models.Model):
     def clean(self):
         if self.detective_reasons is None or self.detective_reasons == '':
             raise ValidationError("Detective must provide reasons for their choice")
-        if self.state == 2 and self.feedback is None:
+        if self.state == 2 and (self.feedback is None or self.feedback == ''):
             raise ValidationError("Rejected ones must have a reason why they're rejected")

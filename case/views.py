@@ -327,3 +327,67 @@ class CaseViewSet(viewsets.ReadOnlyModelViewSet):
         serializer.save(case=case, added_by=request.user)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        method='post',
+        operation_description="Detective starts working on a case - creates Detection and DetectionBoard",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'sergeant_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of assigned sergeant'),
+                'board_title': openapi.Schema(type=openapi.TYPE_STRING, description='Title for the detection board'),
+            },
+            required=['sergeant_id']
+        )
+    )
+    @action(detail=True, methods=['post'], url_path='start-detection')
+    def start_detection(self, request, pk=None):
+        """Detective starts working on a case by creating a Detection"""
+        from detection.models import Detection, DetectionBoard
+        from users.permissions import IsDetective
+        
+        case = self.get_object()
+        
+        # Check if user is a detective
+        if not request.user.groups.filter(name='Detective').exists():
+            raise ValidationError("Only detectives can start case detection")
+        
+        # Check if detection already exists
+        if hasattr(case, 'detection') and case.detection:
+            raise ValidationError("Detection already exists for this case")
+        
+        sergeant_id = request.data.get('sergeant_id')
+        if not sergeant_id:
+            raise ValidationError("sergeant_id is required")
+        
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        try:
+            sergeant = User.objects.get(id=sergeant_id)
+        except User.DoesNotExist:
+            raise ValidationError("Sergeant not found")
+        
+        if not sergeant.groups.filter(name='Sergeant').exists():
+            raise ValidationError("Selected user is not a sergeant")
+        
+        # Create detection board
+        board_title = request.data.get('board_title', f'تحقیقات پرونده {case.case_number}')
+        board = DetectionBoard.objects.create(title=board_title)
+        
+        # Create detection
+        detection = Detection.objects.create(
+            detective=request.user,
+            case=case,
+            detection_board=board,
+            sergeant=sergeant
+        )
+        
+        return Response({
+            'message': 'Detection started successfully',
+            'detection_id': detection.id,
+            'board_id': board.id,
+            'case_id': str(case.id),
+            'detective': request.user.username,
+            'sergeant': sergeant.username
+        }, status=status.HTTP_201_CREATED)

@@ -49,12 +49,17 @@ class RewardTipViewSet(viewsets.ModelViewSet):
 
         if self.action == 'pending_for_detective':
             # فقط مواردی که کاربر کارآگاه مسئول آن پرونده/مظنون است
+            # Check through Detection relationship
+            from detection.models import Detection
+            from django.db.models import Q
+            
+            detective_cases = Detection.objects.filter(detective=user).values_list('case_id', flat=True)
+            
             return qs.filter(
-                status=RewardTipStatus.SENT_TO_DETECTIVE,
-                related_case__created_by=user  # یا هر شرطی که کارآگاه مسئول را مشخص می‌کند
-            ) | qs.filter(
-                status=RewardTipStatus.SENT_TO_DETECTIVE,
-                related_suspect__case__created_by=user
+                status=RewardTipStatus.SENT_TO_DETECTIVE
+            ).filter(
+                Q(related_case_id__in=detective_cases) | 
+                Q(related_suspect__case_id__in=detective_cases)
             )
 
         return qs
@@ -97,16 +102,22 @@ class RewardTipViewSet(viewsets.ModelViewSet):
         if tip.status != RewardTipStatus.SENT_TO_DETECTIVE:
             raise ValidationError("این اطلاعات در مرحله تأیید کارآگاه نیست.")
 
-        # چک مهم: فقط کارآگاه مسئول پرونده
-        if tip.related_case and tip.related_case.created_by != request.user:  # ← شرط واقعی را اینجا تنظیم کنید
-            if not hasattr(tip.related_case, 'detective') or tip.related_case.detective != request.user:
-                raise PermissionDenied("شما کارآگاه مسئول این پرونده نیستید.")
-
-        if tip.related_suspect and tip.related_suspect.case.created_by != request.user:
-            raise PermissionDenied("شما کارآگاه مسئول این مظنون نیستید.")
-
         serializer = DetectiveConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # Check if user is the detective for this case
+        is_detective_for_case = False
+        if tip.related_case:
+            # Check through Detection relationship
+            if hasattr(tip.related_case, 'detection') and tip.related_case.detection:
+                is_detective_for_case = tip.related_case.detection.detective == request.user
+        
+        if tip.related_suspect and tip.related_suspect.case:
+            if hasattr(tip.related_suspect.case, 'detection') and tip.related_suspect.case.detection:
+                is_detective_for_case = tip.related_suspect.case.detection.detective == request.user
+        
+        if not is_detective_for_case:
+            raise PermissionDenied("شما کارآگاه مسئول این پرونده نیستید.")
 
         if serializer.validated_data['confirmed']:
             tip.status = RewardTipStatus.ACCEPTED

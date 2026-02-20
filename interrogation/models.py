@@ -130,10 +130,33 @@ class Interrogation(models.Model):
 
 class Court(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    judge = models.ForeignKey(User, on_delete=models.RESTRICT)
-    interrogation = models.ForeignKey(Interrogation, on_delete=models.RESTRICT)
-    created_at = models.DateField(auto_now_add=True)
+    judge = models.ForeignKey(User, on_delete=models.RESTRICT, related_name='court_cases')
+    interrogation = models.OneToOneField(Interrogation, on_delete=models.RESTRICT, related_name='court')
+    created_at = models.DateTimeField(auto_now_add=True)
+    hearing_date = models.DateField(null=True, blank=True, verbose_name="تاریخ دادگاه")
+    
     final_verdict = models.CharField(
-        max_length=20, choices=VerdictStatus.choices, null=True
+        max_length=20, 
+        choices=VerdictStatus.choices, 
+        null=True, 
+        blank=True,
+        verbose_name="حکم نهایی"
     )
-    date = models.DateField()
+    punishment_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="عنوان مجازات"
+    )
+    punishment_description = models.TextField(
+        blank=True,
+        verbose_name="توضیحات مجازات"
+    )
+    verdict_date = models.DateTimeField(null=True, blank=True, verbose_name="تاریخ صدور حکم")
+    
+    class Meta:
+        verbose_name = "دادگاه"
+        verbose_name_plural = "دادگاه‌ها"
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"دادگاه {self.interrogation.suspect.person.username} - قاضی {self.judge.username}"

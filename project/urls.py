@@ -27,6 +27,7 @@ from users import views as new_views
 
 from case.views import CaseViewSet, CrimeSceneReportViewSet, RegisterComplainViewSet
 from interrogation import views as p_view
+from interrogation.views import most_wanted_view, CourtViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -42,9 +43,10 @@ schema_view = get_schema_view(
 )
 
 router = DefaultRouter()
-router.register(r"register", new_views.UserViewSet, basename="register")
+router.register(r"users", new_views.UserViewSet, basename="users")
 router.register(r"suspect", p_view.SuspectViewSet, basename="suspect")
 router.register(r"interrogation", p_view.InterrogationViewSet, basename="interrogation")
+router.register(r"court", CourtViewSet, basename="court")
 router.register(r'registercomplain', RegisterComplainViewSet, basename='complain')
 router.register(r'case', CaseViewSet, basename='case')
 # router.register(r'profiles', views.ProfileViewSet, basename='profiles')
@@ -61,8 +63,10 @@ urlpatterns = [
         name="schema-swagger-ui",
     ),
     path("", include(router.urls)),
+    path("register/", new_views.RegisterView.as_view(), name="register"),
     path("login/", views.LoginAPIView.as_view(), name="login"),
     path("logout/", views.LogoutAPIView.as_view(), name="logout"),
     path('api/detection/', include('detection.urls')),
     path('api/rewards/', include('rewards.urls')),
+    path('api/most-wanted/', most_wanted_view, name='most-wanted'),
 ]
