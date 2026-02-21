@@ -1,6 +1,6 @@
 #interrogation/serializers.py
 from rest_framework import serializers
-from .models import Interrogation, Suspect, Court, VerdictStatus
+from .models import Interrogation, Suspect, Court, VerdictStatus, Punishment
 from django.core.exceptions import ValidationError
 
 
@@ -19,7 +19,7 @@ class SuspectSerializer(serializers.ModelSerializer):
             "person_details",
             "case_details",
         ]
-        read_only_fields = ["id", "case","person"]
+        read_only_fields = ["id", "case", "person"]
 
     def get_person_details(self, obj):
         """Return basic user information"""
@@ -137,7 +137,7 @@ class InterrogationWriteSerializer(serializers.ModelSerializer):
             "interrogator_sergeant",
             "interrogator_detective",
         ]
-        read_only_fields = ["id","suspect"]
+        read_only_fields = ["id", "suspect"]
         extra_kwargs = {
             "interrogator_sergeant": {"required": True, "allow_null": False},
             "interrogator_detective": {"required": True, "allow_null": False},
@@ -212,9 +212,16 @@ class CourtSerializer(serializers.ModelSerializer):
     class Meta:
         model = Court
         fields = "__all__"
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "interrogation", "judge"]
 
 
 class CapitanCommentSerializer(serializers.Serializer):
     comment = serializers.CharField()  # an string
     verdict = serializers.ChoiceField(choices=VerdictStatus.choices)
+
+
+class PunishmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Punishment
+        fields = ["id", "court", "created_at", "payment", "prison_time", "is_exile"]
+        read_only_fields = ["id", "created_at", "court"]

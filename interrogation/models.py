@@ -137,3 +137,11 @@ class Court(models.Model):
         max_length=20, choices=VerdictStatus.choices, null=True
     )
     date = models.DateField()
+
+class Punishment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    court = models.ForeignKey(Court,on_delete=models.RESTRICT)
+    created_at = models.DateField(auto_now_add=True)
+    payment = models.IntegerField()
+    prison_time = models.DurationField()
+    is_exile = models.BooleanField()
