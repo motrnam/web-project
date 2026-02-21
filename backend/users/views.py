@@ -9,6 +9,10 @@ from django.contrib.auth.models import Group
 
 UserModel = get_user_model()
 
+from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
+from rest_framework import status
+
 
 class RegisterView(generics.CreateAPIView):
     """فقط برای ثبت‌نام - POST /register/"""
@@ -16,14 +20,26 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = UserModel.objects.all()
 
-    def perform_create(self, serializer):
-        # اگر اولین کاربر است، به او نقش Administrator داده می‌شود
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Save user
         if not UserModel.objects.exists():
             user = serializer.save()
             admin_group = Group.objects.get_or_create(name="Administrator")[0]
             user.groups.add(admin_group)
         else:
-            serializer.save()
+            user = serializer.save()
+
+        # Create token for the user
+        token, created = Token.objects.get_or_create(user=user)
+
+        # Return token along with user data
+        return Response({
+            'user': serializer.data,
+            'token': token.key
+        }, status=status.HTTP_201_CREATED)
 
 
 class UserViewSet(viewsets.ModelViewSet):

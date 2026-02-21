@@ -10,15 +10,12 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-
-
-
 User = get_user_model()
-    
 
-    
+
 class LoginAPIView(APIView):
     @swagger_auto_schema(
         operation_description="Login with username/email and password",
@@ -63,10 +60,10 @@ class LoginAPIView(APIView):
                     username = profile.username
                 except User.DoesNotExist:
                     raise exceptions.AuthenticationFailed("Invalid credentials3")
-                
+
         if not username or not password:
             raise exceptions.ParseError("Username and password are required")
-        
+
         user = authenticate(
             request,
             username=username,
@@ -96,6 +93,7 @@ class LoginAPIView(APIView):
             {"error": "Invalid credentials4"},
             status=status.HTTP_401_UNAUTHORIZED
         )
+
 
 class LogoutAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
