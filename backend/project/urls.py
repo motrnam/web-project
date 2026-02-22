@@ -23,12 +23,11 @@ from rest_framework.routers import DefaultRouter
 from rest_framework import permissions
 
 from backend import views
-from users import views as new_views
+from users import views as users_views
 
 from case.views import CaseViewSet, CrimeSceneReportViewSet, RegisterComplainViewSet
 from interrogation import views as p_view
 from interrogation.views import most_wanted_view, CourtViewSet
-from users.views import CustomAuthToken
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -44,7 +43,7 @@ schema_view = get_schema_view(
 )
 
 router = DefaultRouter()
-router.register(r"users", new_views.UserViewSet, basename="users")
+router.register(r"users", users_views.UserViewSet, basename="users")
 router.register(r"suspect", p_view.SuspectViewSet, basename="suspect")
 router.register(r"interrogation", p_view.InterrogationViewSet, basename="interrogation")
 router.register(r"court", CourtViewSet, basename="court")
@@ -63,12 +62,12 @@ urlpatterns = [
         schema_view.with_ui("swagger", cache_timeout=0),
         name="schema-swagger-ui",
     ),
-    path("", include(router.urls)),
-    path("register/", new_views.RegisterView.as_view(), name="register"),
-    path("login/", views.LoginAPIView.as_view(), name="login"),
-    path("logout/", views.LogoutAPIView.as_view(), name="logout"),
+    path("api/", include(router.urls)),
+    path("api/register/", users_views.RegisterView.as_view(), name="register"),
+    path("api/login/", users_views.CustomAuthToken.as_view(), name="login"),
+    path("api/logout/", views.LogoutAPIView.as_view(), name="logout"),
     path('api/detection/', include('detection.urls')),
     path('api/rewards/', include('rewards.urls')),
     path('api/most-wanted/', most_wanted_view, name='most-wanted'),
-    path('api-token-auth/', CustomAuthToken.as_view(), name='api_token_auth'),
+    path('api/token-auth/', users_views.CustomAuthToken.as_view(), name='api_token_auth'),
 ]

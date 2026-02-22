@@ -6,13 +6,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .permissions import IsAdministrator
 from django.contrib.auth.models import Group
+from users.serializers import UserSimpleSerializer
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.authtoken.models import Token
 
 UserModel = get_user_model()
-
-from rest_framework.authtoken.models import Token
-from rest_framework.response import Response
-from rest_framework import status
 
 
 class RegisterView(generics.CreateAPIView):
@@ -50,6 +49,7 @@ class UserViewSet(viewsets.ModelViewSet):
     GET/PUT/PATCH/DELETE /users/{id}/ - مدیریت کاربر خاص
     POST /users/grant-role/ - دادن نقش
     """
+    authentication_classes = [TokenAuthentication]
     queryset = UserModel.objects.all()
     serializer_class = UserSimpleSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdministrator]
@@ -59,13 +59,15 @@ class UserViewSet(viewsets.ModelViewSet):
             return GrantSerializer
         return UserSimpleSerializer
 
-    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=["get"], authentication_classes=[TokenAuthentication],
+            permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
         """پروفایل کاربر فعلی - GET /users/me/"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=["get"], authentication_classes=[TokenAuthentication],
+            permission_classes=[permissions.IsAuthenticated])
     def roles(self, request):
         """نقش‌های کاربر فعلی - GET /users/roles/"""
         groups = request.user.groups.all()
@@ -74,7 +76,8 @@ class UserViewSet(viewsets.ModelViewSet):
             "roles": [group.name for group in groups]
         })
 
-    @action(detail=False, methods=["post"], permission_classes=[IsAdministrator])
+    @action(detail=False, methods=["post"], authentication_classes=[TokenAuthentication],
+            permission_classes=[IsAdministrator])
     def grant_role(self, request):
         """دادن نقش به کاربر - POST /users/grant-role/"""
         serializer = GrantSerializer(data=request.data)
@@ -105,7 +108,6 @@ class CustomAuthToken(ObtainAuthToken):
     """
 
     def post(self, request, *args, **kwargs):
-        # مهم: اینجا "username" در واقع identifier است (می‌تواند هر ۴ تا باشد)
         serializer = self.serializer_class(data=request.data,
                                            context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -114,9 +116,5 @@ class CustomAuthToken(ObtainAuthToken):
 
         return Response({
             'token': token.key,
-            'user_id': user.pk,
-            'username': user.username,
-            'full_name': user.full_name,
-            'roles': [g.name for g in user.groups.all()],
-            'photo_url': user.photo.url if user.photo else None
+            'user': UserSimpleSerializer(user).data
         })

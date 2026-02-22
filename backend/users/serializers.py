@@ -13,7 +13,7 @@ class UserSimpleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserModel
-        fields = ["id", "username", "full_name", "email", "groups", "roles"]
+        fields = ["id", "username", "full_name", "email", "groups", "roles", "photo_url"]
 
     def get_roles(self, obj):
         return obj.get_roles_display()

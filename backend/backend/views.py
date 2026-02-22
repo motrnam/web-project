@@ -9,6 +9,8 @@ from django.contrib.auth import authenticate, login
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
 
+from users.serializers import UserSimpleSerializer
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,7 +30,7 @@ class LoginAPIView(APIView):
             },
         ),
         responses={
-            200: openapi.Response(description="Login successful"),
+            200: openapi.Response(description="Login successful with token"),
             401: openapi.Response(description="Invalid credentials"),
             400: openapi.Response(description="Missing fields")
         }
@@ -36,6 +38,8 @@ class LoginAPIView(APIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
+
+        # Find user by various identifiers (your existing logic)
         if not username:
             email = request.data.get("email")
             if email:
@@ -44,6 +48,7 @@ class LoginAPIView(APIView):
                     username = profile.username
                 except User.DoesNotExist:
                     raise exceptions.AuthenticationFailed("Invalid credentials1")
+
         if not username:
             national_id = request.data.get("national_id")
             if national_id:
@@ -52,6 +57,7 @@ class LoginAPIView(APIView):
                     username = profile.username
                 except User.DoesNotExist:
                     raise exceptions.AuthenticationFailed("Invalid credentials2")
+
         if not username:
             phone = request.data.get("phone_number")
             if phone:
@@ -69,28 +75,19 @@ class LoginAPIView(APIView):
             username=username,
             password=password
         )
-        # print(f"{username = } , {password=}")
+
         if user:
-            login(request, user)
-            # print(f"{user.password = }") # prints hashed (runserver)
-            return Response(
-                {"message": "Login successful"},
-                status=status.HTTP_200_OK
-            )
-        # else:
-        #     try:
-        #         user = User.objects.get(username=username) # print plain text (running test)
-        #         print(f"{user.password = }")
-        #         if user.check_password(password):
-        #             print("Password is correct but authentication failed - backend issue")
-        #         else:
-        #             print("Password is incorrect")
-        #             print(f"Password hash: {user.password}")
-        #     except User.DoesNotExist:
-        #         print("user not")
+            # Get or create token for the user
+            token, created = Token.objects.get_or_create(user=user)
+
+            return Response({
+                "message": "Login successful",
+                "token": token.key,
+                "user": UserSimpleSerializer(user).data
+            }, status=status.HTTP_200_OK)
 
         return Response(
-            {"error": "Invalid credentials4"},
+            {"error": "Invalid credentials"},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
@@ -106,11 +103,12 @@ class LogoutAPIView(APIView):
         }
     )
     def post(self, request):
-        request.user.auth_token.delete()
+        # Delete the token
         try:
             request.user.auth_token.delete()
-        except Token.DoesNotExist:
-            raise exceptions.NotAcceptable("Invalid Token")
+        except (AttributeError, Token.DoesNotExist):
+            pass  # Token might not exist
+
         response = Response(
             {"message": "Logout successful"},
             status=status.HTTP_200_OK
