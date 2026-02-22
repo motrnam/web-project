@@ -9,6 +9,7 @@ UserModel = get_user_model()
 class UserSimpleSerializer(serializers.ModelSerializer):
     groups = serializers.StringRelatedField(many=True, read_only=True)
     roles = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = UserModel
@@ -16,6 +17,14 @@ class UserSimpleSerializer(serializers.ModelSerializer):
 
     def get_roles(self, obj):
         return obj.get_roles_display()
+
+    def get_photo_url(self, obj):
+        if obj.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            return obj.photo.url
+        return None
 
 
 class RegisterSerializer(serializers.ModelSerializer):

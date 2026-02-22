@@ -26,6 +26,14 @@ class User(AbstractUser):
         verbose_name="ایمیل"
     )
 
+    photo = models.ImageField(
+        upload_to='user_photos/%Y/%m/%d/',
+        null=True,
+        blank=True,
+        verbose_name="عکس پروفایل / تصویر مظنون",
+        help_text="برای مظنونین، عکس شناسایی یا تصویر مرتبط"
+    )
+
     def __str__(self):
         if self.full_name:
             return f"{self.full_name} ({self.username})"

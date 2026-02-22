@@ -28,6 +28,7 @@ from users import views as new_views
 from case.views import CaseViewSet, CrimeSceneReportViewSet, RegisterComplainViewSet
 from interrogation import views as p_view
 from interrogation.views import most_wanted_view, CourtViewSet
+from users.views import CustomAuthToken
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -69,4 +70,5 @@ urlpatterns = [
     path('api/detection/', include('detection.urls')),
     path('api/rewards/', include('rewards.urls')),
     path('api/most-wanted/', most_wanted_view, name='most-wanted'),
+    path('api-token-auth/', CustomAuthToken.as_view(), name='api_token_auth'),
 ]

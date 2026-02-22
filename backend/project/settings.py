@@ -143,3 +143,16 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
+
+
+AUTHENTICATION_BACKENDS = [
+    'users.authentication.MultiFieldAuthBackend',   # ← backend سفارشی ما
+    'django.contrib.auth.backends.ModelBackend',     # نگه داشتن پیش‌فرض هم ضرری ندارد
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}

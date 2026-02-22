@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .permissions import IsAdministrator
 from django.contrib.auth.models import Group
+from rest_framework.authtoken.views import ObtainAuthToken
 
 UserModel = get_user_model()
 
@@ -91,3 +92,31 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         except UserModel.DoesNotExist:
             raise exceptions.NotFound("user does not exist")
+
+
+class CustomAuthToken(ObtainAuthToken):
+    """
+    ورود با username OR national_id OR phone_number OR email
+    POST /api-token-auth/
+    {
+        "username": "09123456789"  ← می‌تواند هر کدام از ۴ فیلد باشد
+        "password": "mypassword"
+    }
+    """
+
+    def post(self, request, *args, **kwargs):
+        # مهم: اینجا "username" در واقع identifier است (می‌تواند هر ۴ تا باشد)
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'username': user.username,
+            'full_name': user.full_name,
+            'roles': [g.name for g in user.groups.all()],
+            'photo_url': user.photo.url if user.photo else None
+        })
