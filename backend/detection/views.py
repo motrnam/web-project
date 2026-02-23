@@ -1,4 +1,4 @@
-# detection/views.py
+# backend/detection/views.py
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from django.db import transaction

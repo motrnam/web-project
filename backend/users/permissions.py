@@ -1,4 +1,4 @@
-#users/permissions.py
+#backend/users/permissions.py
 from rest_framework import permissions
 from case.models import ComplainStatus
 from evidences.models import Evidence

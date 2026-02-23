@@ -1,3 +1,4 @@
+//frontend/src/components/Register.tsx
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import {useAuth} from '../context/AuthContext';
@@ -26,61 +27,43 @@ const Register = () => {
         });
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
 
-        try {
-            console.log('Registration data:', formData);
+  try {
+    const res = await fetch(`${API_BASE_URL}/register/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
 
-            const res = await fetch(`${API_BASE_URL}/register/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            });
+    const data = await res.json();
 
-            console.log('Response status:', res.status);
-
-            const data = await res.json();
-            console.log('Response data:', data);
-
-            if (res.ok) {
-                login(data.token, data.user);
-                navigate('/dashboard');
-            } else {
-                // Show the actual error message from the server
-                if (data.username) {
-                    setError(`Username: ${data.username.join(', ')}`);
-                } else if (data.email) {
-                    setError(`Email: ${data.email.join(', ')}`);
-                } else if (data.national_id) {
-                    setError(`National ID: ${data.national_id.join(', ')}`);
-                } else if (data.phone_number) {
-                    setError(`Phone number: ${data.phone_number.join(', ')}`);
-                } else if (data.password) {
-                    setError(`Password: ${data.password.join(', ')}`);
-                } else if (data.message) {
-                    setError(data.message);
-                } else if (typeof data === 'object') {
-                    // Generic error display for any other field errors
-                    const errors = Object.entries(data)
-                        .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
-                        .join('\n');
-                    setError(errors || 'Registration failed. Please check your information.');
-                } else {
-                    setError('Registration failed. Please try again.');
-                }
-            }
-        } catch (err) {
-            console.error('Fetch error:', err);
-            setError(`Network error: ${err.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (res.ok) {
+      login(data.token, data.user);
+      navigate('/dashboard');
+    } else {
+      // نمایش خطا از سرور
+      if (data.username) {
+        setError(`Username: ${data.username.join(', ')}`);
+      } else if (data.email) {
+        setError(`Email: ${data.email.join(', ')}`);
+      } else if (data.national_id) {
+        setError(`National ID: ${data.national_id.join(', ')}`);
+      } else {
+        setError("Registration failed. Please check your information.");
+      }
+    }
+  } catch (err) {
+    console.error('Fetch error:', err);
+    // اصلاح خطای err.message
+    setError(`Network error: ${err?.message || 'Unknown error'}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
     const styles = {
         container: {

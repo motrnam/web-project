@@ -1,4 +1,4 @@
-#rewards/serializers.py
+#backend/rewards/serializers.py
 from rest_framework import serializers
 from .models import RewardTip
 

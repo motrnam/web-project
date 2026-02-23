@@ -1,3 +1,4 @@
+//frontend/src/components/Login.tsx
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import {useAuth} from '../context/AuthContext';
@@ -124,7 +125,7 @@ const Login = () => {
                 <h2 style={styles.title}>Login to L.A. Noire</h2>
 
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>Username:</label>
+                    <label style={styles.label}>ورود با نام کاربری / کد ملی / شماره / ایمیل:</label>
                     <input
                         type="text"
                         name="username"
@@ -132,6 +133,7 @@ const Login = () => {
                         onChange={handleChange}
                         required
                         style={styles.input}
+                        placeholder="نام کاربری، کد ملی، شماره تلفن یا ایمیل"
                     />
                 </div>
 

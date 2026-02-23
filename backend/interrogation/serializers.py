@@ -1,4 +1,4 @@
-#interrogation/serializers.py
+#backend/interrogation/serializers.py
 from rest_framework import serializers
 from .models import Interrogation, Suspect, Court, VerdictStatus
 from django.core.exceptions import ValidationError

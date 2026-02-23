@@ -1,4 +1,4 @@
-#interrogation/views.py
+#backend/interrogation/views.py
 from rest_framework import viewsets, permissions, exceptions, response, status
 from rest_framework.decorators import action, api_view, permission_classes
 from django.utils import timezone

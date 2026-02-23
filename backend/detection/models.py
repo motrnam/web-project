@@ -1,4 +1,4 @@
-# detection/models.py
+# backend/detection/models.py
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.core.exceptions import ValidationError

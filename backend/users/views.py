@@ -1,4 +1,4 @@
-# users/views.py
+# backend/users/views.py
 from rest_framework import generics, viewsets, permissions, status, exceptions
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, UserSimpleSerializer, GrantSerializer

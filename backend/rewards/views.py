@@ -1,4 +1,4 @@
-#rewards/views.py
+#backend/rewards/views.py
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
