@@ -391,3 +391,32 @@ class CaseViewSet(viewsets.ReadOnlyModelViewSet):
             'detective': request.user.username,
             'sergeant': sergeant.username
         }, status=status.HTTP_201_CREATED)
+
+
+class StatsView(APIView):
+    @swagger_auto_schema(
+        operation_description="دریافت آمار کلی سامانه",
+        responses={
+            200: openapi.Response(
+                description="آمار کلی",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "total_solved_cases": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "total_employees": openapi.Schema(type=openapi.TYPE_INTEGER),
+                        "active_cases": openapi.Schema(type=openapi.TYPE_INTEGER),
+                    }
+                )
+            )
+        }
+    )
+    def get(self, request):
+        total_solved_cases = Case.objects.filter(status="CLOSED").count()
+        total_employees = User.objects.exclude(groups__name="Base User").count()
+        active_cases = Case.objects.filter(status="OPEN").count()
+        
+        return Response({
+            "total_solved_cases": total_solved_cases,
+            "total_employees": total_employees,
+            "active_cases": active_cases
+        })
