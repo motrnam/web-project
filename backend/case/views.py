@@ -1,8 +1,9 @@
-#backend/case/views.py
+# backend/case/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.utils import timezone
@@ -13,12 +14,13 @@ from .models import (
 )
 from .serializers import (
     EmptySerializer, RegisterComplainSerializer, ComplainantSerializer, CrimeSceneReportSerializer,
-    CrimeSceneWitnessSerializer,CaseSerializer
+    CrimeSceneWitnessSerializer, CaseSerializer
 )
 from users.permissions import (
     IsPoliceNotCadet, CanSubmitComplaint, IsCadetReviewer, IsOfficerReviewer
 )
 from interrogation.serializers import SuspectSerializer
+
 
 class RegisterComplainViewSet(viewsets.ModelViewSet):
     queryset = RegisterComplain.objects.all()
@@ -44,7 +46,7 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
         operation_description="ارسال شکایت به کارآموز برای بررسی (تغییر وضعیت به PENDING_CADET)",
         responses={200: RegisterComplainSerializer(many=False)}
     )
-    @action(detail=True, methods=['post'],serializer_class=EmptySerializer)
+    @action(detail=True, methods=['post'], serializer_class=EmptySerializer)
     def submit(self, request, pk=None):
         complain = self.get_object()
         if not complain.can_submit():
@@ -148,7 +150,6 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
 
         complain.save()
         return Response(RegisterComplainSerializer(complain).data)
-    
 
     @swagger_auto_schema(
         method='post',
@@ -159,7 +160,8 @@ class RegisterComplainViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_complainant(self, request, pk=None):
         complain = self.get_object()
-        if complain.status not in [ComplainStatus.DRAFT, ComplainStatus.PENDING_CADET, ComplainStatus.RETURNED_TO_COMPLAINANT]:
+        if complain.status not in [ComplainStatus.DRAFT, ComplainStatus.PENDING_CADET,
+                                   ComplainStatus.RETURNED_TO_COMPLAINANT]:
             raise ValidationError("نمی‌توان در این وضعیت شاکی اضافه کرد")
 
         serializer = ComplainantSerializer(data=request.data)
@@ -304,7 +306,8 @@ class CrimeSceneReportViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(case=report.case)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
+
 class CaseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Case.objects.all()
     serializer_class = CaseSerializer
@@ -345,36 +348,36 @@ class CaseViewSet(viewsets.ReadOnlyModelViewSet):
         """Detective starts working on a case by creating a Detection"""
         from detection.models import Detection, DetectionBoard
         from users.permissions import IsDetective
-        
+
         case = self.get_object()
-        
+
         # Check if user is a detective
         if not request.user.groups.filter(name='Detective').exists():
             raise ValidationError("Only detectives can start case detection")
-        
+
         # Check if detection already exists
         if hasattr(case, 'detection') and case.detection:
             raise ValidationError("Detection already exists for this case")
-        
+
         sergeant_id = request.data.get('sergeant_id')
         if not sergeant_id:
             raise ValidationError("sergeant_id is required")
-        
+
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        
+
         try:
             sergeant = User.objects.get(id=sergeant_id)
         except User.DoesNotExist:
             raise ValidationError("Sergeant not found")
-        
+
         if not sergeant.groups.filter(name='Sergeant').exists():
             raise ValidationError("Selected user is not a sergeant")
-        
+
         # Create detection board
         board_title = request.data.get('board_title', f'تحقیقات پرونده {case.case_number}')
         board = DetectionBoard.objects.create(title=board_title)
-        
+
         # Create detection
         detection = Detection.objects.create(
             detective=request.user,
@@ -382,7 +385,7 @@ class CaseViewSet(viewsets.ReadOnlyModelViewSet):
             detection_board=board,
             sergeant=sergeant
         )
-        
+
         return Response({
             'message': 'Detection started successfully',
             'detection_id': detection.id,
@@ -414,7 +417,7 @@ class StatsView(APIView):
         total_solved_cases = Case.objects.filter(status="CLOSED").count()
         total_employees = User.objects.exclude(groups__name="Base User").count()
         active_cases = Case.objects.filter(status="OPEN").count()
-        
+
         return Response({
             "total_solved_cases": total_solved_cases,
             "total_employees": total_employees,
