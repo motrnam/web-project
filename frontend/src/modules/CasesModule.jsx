@@ -14,7 +14,7 @@ const CasesModule = ({ user, permissions }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        "/api/detection/boards/?assigned_to_me=true",
+        "http://localhost:8000/api/detection/boards/",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
