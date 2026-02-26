@@ -1,4 +1,4 @@
-#backend/interrogation/models.py
+# backend/interrogation/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -7,7 +7,6 @@ from case.models import Case
 from django.core.validators import MaxValueValidator, MinValueValidator
 import uuid
 from django.core.exceptions import ValidationError
-
 
 # Create your models here.
 User = get_user_model()
@@ -22,14 +21,16 @@ class PoliceChiefApproval(models.TextChoices):
     APPROVED = "APPROVED", "approved"
     NOT_APPROVED = "NOT_APPROVED", "not approved"
 
+
 class InterrogationStatus(models.TextChoices):
-    PENDING_SCORES      = "PENDING_SCORES",      "در انتظار ثبت امتیازها"
-    SCORES_COMPLETED    = "SCORES_COMPLETED",    "امتیازها ثبت شده"
-    PENDING_CAPTAIN     = "PENDING_CAPTAIN",     "در انتظار تصمیم کاپیتان"
-    CAPTAIN_DECIDED     = "CAPTAIN_DECIDED",     "کاپیتان تصمیم گرفت"
-    PENDING_CHIEF       = "PENDING_CHIEF",       "در انتظار تأیید رئیس پلیس"
-    COMPLETED           = "COMPLETED",           "کامل شده"
-    CANCELLED           = "CANCELLED",           "لغو شده"
+    PENDING_SCORES = "PENDING_SCORES", "در انتظار ثبت امتیازها"
+    SCORES_COMPLETED = "SCORES_COMPLETED", "امتیازها ثبت شده"
+    PENDING_CAPTAIN = "PENDING_CAPTAIN", "در انتظار تصمیم کاپیتان"
+    CAPTAIN_DECIDED = "CAPTAIN_DECIDED", "کاپیتان تصمیم گرفت"
+    PENDING_CHIEF = "PENDING_CHIEF", "در انتظار تأیید رئیس پلیس"
+    COMPLETED = "COMPLETED", "کامل شده"
+    CANCELLED = "CANCELLED", "لغو شده"
+
 
 class SuspectStatus(models.TextChoices):
     CAPTURED = "CAPTURED", "captured"
@@ -125,8 +126,7 @@ class Interrogation(models.Model):
         if self.sergeant_score is not None and self.detective_score is not None:
             self.status = InterrogationStatus.SCORES_COMPLETED
             self.save(update_fields=['status'])
-        
-    
+
 
 class Court(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -134,29 +134,29 @@ class Court(models.Model):
     interrogation = models.OneToOneField(Interrogation, on_delete=models.RESTRICT, related_name='court')
     created_at = models.DateTimeField(auto_now_add=True)
     hearing_date = models.DateField(null=True, blank=True, verbose_name="تاریخ دادگاه")
-    
+
     final_verdict = models.CharField(
-        max_length=20, 
-        choices=VerdictStatus.choices, 
-        null=True, 
+        max_length=20,
+        choices=VerdictStatus.choices,
+        null=True,
         blank=True,
-        verbose_name="حکم نهایی"
-    )
-    punishment_title = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="عنوان مجازات"
-    )
-    punishment_description = models.TextField(
-        blank=True,
-        verbose_name="توضیحات مجازات"
+        verbose_name="حکم نهایی",
     )
     verdict_date = models.DateTimeField(null=True, blank=True, verbose_name="تاریخ صدور حکم")
-    
+
     class Meta:
         verbose_name = "دادگاه"
         verbose_name_plural = "دادگاه‌ها"
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"دادگاه {self.interrogation.suspect.person.username} - قاضی {self.judge.username}"
+
+
+class Punishment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    court = models.ForeignKey(Court, on_delete=models.RESTRICT)
+    created_at = models.DateField(auto_now_add=True)
+    payment = models.IntegerField()
+    prison_time = models.DurationField()
+    is_exile = models.BooleanField()
