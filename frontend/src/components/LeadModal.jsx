@@ -32,7 +32,7 @@ const LeadModal = ({ lead, onClose, onSave, onDelete }) => {
     try {
       const response = await fetch("/api/evidences/evidences/", {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Token ${localStorage.getItem("access_token")}`,
         },
       });
       if (response.ok) {

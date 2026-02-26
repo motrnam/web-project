@@ -26,7 +26,7 @@ const handleCreateLead = async (leadData) => {
     const response = await fetch("/api/detection/leads/", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Token ${localStorage.getItem("access_token")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -54,7 +54,7 @@ const handleUpdateLead = async (leadData) => {
     const response = await fetch(`/api/detection/leads/${selectedLead.id}/`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Token ${localStorage.getItem("access_token")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -81,7 +81,7 @@ const handleDeleteLead = async (leadId) => {
     const response = await fetch(`/api/detection/leads/${leadId}/`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Token ${localStorage.getItem("access_token")}`,
       },
     });
 
@@ -98,7 +98,7 @@ const handleCreateYarn = async (yarnData) => {
     const response = await fetch("/api/detection/yarns/", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Token ${localStorage.getItem("access_token")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(yarnData),
@@ -123,7 +123,7 @@ const handleDeleteYarn = async (yarnId) => {
     const response = await fetch(`/api/detection/yarns/${yarnId}/`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        Authorization: `Token ${localStorage.getItem("access_token")}`,
       },
     });
 
@@ -162,17 +162,17 @@ const DetectiveBoard = ({ boardId, boardData, onBoardUpdate, permissions }) => {
       const [leadsRes, yarnsRes, suggestionsRes] = await Promise.all([
         fetch(`/api/detection/boards/${boardId}/leads/`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Token ${localStorage.getItem("access_token")}`,
           },
         }),
         fetch(`/api/detection/boards/${boardId}/yarns/`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Token ${localStorage.getItem("access_token")}`,
           },
         }),
         fetch(`/api/detection/boards/${boardId}/suggestions/`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Token ${localStorage.getItem("access_token")}`,
           },
         }),
       ]);

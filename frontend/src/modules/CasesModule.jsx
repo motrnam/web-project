@@ -17,7 +17,7 @@ const CasesModule = ({ user, permissions }) => {
         "http://localhost:8000/api/detection/boards/",
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Token ${localStorage.getItem("access_token")}`,
           },
         },
       );

@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Load token and user from localStorage on initial render
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    const storedToken = localStorage.getItem("access_token");
     const storedUser = localStorage.getItem("user");
 
     if (storedToken && storedUser) {
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("✅ Loaded user from storage:", parsedUser.username);
       } catch (e) {
         console.error("Failed to parse stored user:", e);
-        localStorage.removeItem("token");
+        localStorage.removeItem("access_token");
         localStorage.removeItem("user");
       }
     }
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRoles(userData.groups || []);
 
     // Save to localStorage
-    localStorage.setItem("token", newToken);
+    localStorage.setItem("access_token", newToken);
     localStorage.setItem("user", JSON.stringify(userData));
 
     console.log("✅ Login successful - token saved");
@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setUser(null);
     setUserRoles([]);
-    localStorage.removeItem("token");
+    localStorage.removeItem("access_token");
     localStorage.removeItem("user");
     console.log("👋 Logged out");
   };
