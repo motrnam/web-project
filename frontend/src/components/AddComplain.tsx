@@ -7,8 +7,8 @@ import {
   type RegisterComplain,
   type RegisterComplainFormData,
   type User,
-  type Complainant
-} from "../logic/DataTypes.ts"
+  type Complainant,
+} from "../logic/DataTypes.ts";
 
 interface AddComplainProps {
   onClose: () => void;
@@ -27,13 +27,13 @@ const AddComplain: React.FC<AddComplainProps> = ({
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  
+
   const [additionalComplainants, setAdditionalComplainants] = useState<
     { userId: string; relationship: string }[]
   >([]);
-  
+
   const [selectedCrimeType, setSelectedCrimeType] = useState<CrimeType>(
-    initialData?.crime_type || CrimeType.TYPE_1
+    initialData?.crime_type || CrimeType.TYPE_1,
   );
 
   // Initialize form with initial data
@@ -71,29 +71,32 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
   // Add additional complainant
   const addComplainant = useCallback(() => {
-    setAdditionalComplainants(prev => [
+    setAdditionalComplainants((prev) => [
       ...prev,
-      { userId: "", relationship: "" }
+      { userId: "", relationship: "" },
     ]);
   }, []);
 
   // Remove additional complainant
   const removeComplainant = useCallback((index: number) => {
-    setAdditionalComplainants(prev => prev.filter((_, i) => i !== index));
+    setAdditionalComplainants((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   // Update complainant field
-  const updateComplainant = useCallback((
-    index: number,
-    field: keyof typeof additionalComplainants[0],
-    value: string
-  ) => {
-    setAdditionalComplainants(prev =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    );
-  }, []);
+  const updateComplainant = useCallback(
+    (
+      index: number,
+      field: keyof (typeof additionalComplainants)[0],
+      value: string,
+    ) => {
+      setAdditionalComplainants((prev) =>
+        prev.map((item, i) =>
+          i === index ? { ...item, [field]: value } : item,
+        ),
+      );
+    },
+    [],
+  );
 
   // Format datetime for input field
   const formatDateTimeForInput = (date?: Date): string => {
@@ -105,12 +108,14 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     const formData = new FormData(e.currentTarget);
     const title = (formData.get("title") as string).trim();
     const description = (formData.get("description") as string).trim();
     const incident_datetime = formData.get("incident_datetime") as string;
-    const incident_location = (formData.get("incident_location") as string).trim();
+    const incident_location = (
+      formData.get("incident_location") as string
+    ).trim();
     const crime_type = formData.get("crime_type") as CrimeType;
 
     // Validation
@@ -136,11 +141,11 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
     // Create complainants array
     const complainants: Partial<Complainant>[] = additionalComplainants
-      .filter(c => c.userId && c.userId.trim() !== "")
-      .map(c => ({
+      .filter((c) => c.userId && c.userId.trim() !== "")
+      .map((c) => ({
         user: c.userId,
         relationship_to_incident: c.relationship,
-        status: ComplainantStatus.PENDING
+        status: ComplainantStatus.PENDING,
       }));
 
     const complain: RegisterComplain = {
@@ -158,7 +163,7 @@ const AddComplain: React.FC<AddComplainProps> = ({
       max_revisions: 3,
       complainants: complainants as Complainant[],
       can_be_edited_by_complainant: true,
-      can_submit: true
+      can_submit: true,
     };
 
     onSave(complain);
@@ -250,14 +255,24 @@ const AddComplain: React.FC<AddComplainProps> = ({
               "
               aria-label="بستن"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {initialData 
-              ? "اطلاعات شکایت خود را به‌روزرسانی کنید" 
+            {initialData
+              ? "اطلاعات شکایت خود را به‌روزرسانی کنید"
               : "لطفاً اطلاعات شکایت خود را با دقت وارد کنید"}
           </p>
         </div>
@@ -266,7 +281,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Title */}
           <div className="space-y-2">
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               عنوان شکایت *
             </label>
             <input
@@ -295,7 +313,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
           {/* Description */}
           <div className="space-y-2">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               شرح کامل شکایت *
             </label>
             <textarea
@@ -323,7 +344,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Incident Date & Time */}
             <div className="space-y-2">
-              <label htmlFor="incident_datetime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="incident_datetime"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 زمان تقریبی وقوع *
               </label>
               <input
@@ -332,7 +356,9 @@ const AddComplain: React.FC<AddComplainProps> = ({
                 type="datetime-local"
                 required
                 defaultValue={formatDateTimeForInput(
-                  initialData?.incident_datetime ? new Date(initialData.incident_datetime) : undefined
+                  initialData?.incident_datetime
+                    ? new Date(initialData.incident_datetime)
+                    : undefined,
                 )}
                 className="
                   w-full px-4 py-3
@@ -347,7 +373,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
             {/* Crime Type */}
             <div className="space-y-2">
-              <label htmlFor="crime_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label
+                htmlFor="crime_type"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 نوع جرم *
               </label>
               <select
@@ -355,7 +384,9 @@ const AddComplain: React.FC<AddComplainProps> = ({
                 name="crime_type"
                 required
                 value={selectedCrimeType}
-                onChange={(e) => setSelectedCrimeType(e.target.value as CrimeType)}
+                onChange={(e) =>
+                  setSelectedCrimeType(e.target.value as CrimeType)
+                }
                 className="
                   w-full px-4 py-3
                   border border-gray-300 dark:border-gray-600
@@ -373,10 +404,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
                   </option>
                 ))}
               </select>
-              
+
               {/* Crime type indicator */}
               <div className="flex items-center gap-2 mt-2">
-                <div 
+                <div
                   className={`w-3 h-3 rounded-full bg-${getCrimeTypeColor(selectedCrimeType)}-500`}
                 />
                 <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -388,7 +419,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
           {/* Incident Location */}
           <div className="space-y-2">
-            <label htmlFor="incident_location" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label
+              htmlFor="incident_location"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               محل وقوع *
             </label>
             <input
@@ -434,8 +468,18 @@ const AddComplain: React.FC<AddComplainProps> = ({
                   focus:outline-none focus:ring-2 focus:ring-blue-500
                 "
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 <span>افزودن شاکی</span>
               </button>
@@ -445,11 +489,13 @@ const AddComplain: React.FC<AddComplainProps> = ({
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
-                  {currentUser.first_name?.[0] || currentUser.username?.[0] || "ش"}
+                  {currentUser.first_name?.[0] ||
+                    currentUser.username?.[0] ||
+                    "ش"}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {currentUser.first_name && currentUser.last_name 
+                    {currentUser.first_name && currentUser.last_name
                       ? `${currentUser.first_name} ${currentUser.last_name}`
                       : currentUser.username || "شاکی اصلی"}
                   </p>
@@ -465,7 +511,10 @@ const AddComplain: React.FC<AddComplainProps> = ({
 
             {/* Additional complainants list */}
             {additionalComplainants.map((complainant, index) => (
-              <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3">
+              <div
+                key={index}
+                className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     شاکی {index + 1}
@@ -480,16 +529,28 @@ const AddComplain: React.FC<AddComplainProps> = ({
                       transition-colors
                     "
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                   </button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <select
                     value={complainant.userId}
-                    onChange={(e) => updateComplainant(index, "userId", e.target.value)}
+                    onChange={(e) =>
+                      updateComplainant(index, "userId", e.target.value)
+                    }
                     className="
                       w-full px-4 py-2
                       border border-gray-300 dark:border-gray-600
@@ -501,21 +562,22 @@ const AddComplain: React.FC<AddComplainProps> = ({
                   >
                     <option value="">انتخاب کاربر</option>
                     {availableUsers
-                      .filter(u => u.id !== currentUser.id)
-                      .map(user => (
+                      .filter((u) => u.id !== currentUser.id)
+                      .map((user) => (
                         <option key={user.id} value={user.id}>
-                          {user.first_name && user.last_name 
+                          {user.first_name && user.last_name
                             ? `${user.first_name} ${user.last_name}`
                             : user.username || user.email}
                         </option>
-                      ))
-                    }
+                      ))}
                   </select>
-                  
+
                   <input
                     type="text"
                     value={complainant.relationship}
-                    onChange={(e) => updateComplainant(index, "relationship", e.target.value)}
+                    onChange={(e) =>
+                      updateComplainant(index, "relationship", e.target.value)
+                    }
                     placeholder="رابطه با حادثه (اختیاری)"
                     className="
                       w-full px-4 py-2
@@ -546,8 +608,18 @@ const AddComplain: React.FC<AddComplainProps> = ({
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <div className="text-blue-600 dark:text-blue-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div className="flex-1">
@@ -555,7 +627,8 @@ const AddComplain: React.FC<AddComplainProps> = ({
                     وضعیت فعلی: {initialData.status}
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    تعداد بازبینی‌ها: {initialData.revision_count} از {initialData.max_revisions}
+                    تعداد بازبینی‌ها: {initialData.revision_count} از{" "}
+                    {initialData.max_revisions}
                   </p>
                 </div>
               </div>

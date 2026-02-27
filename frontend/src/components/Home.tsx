@@ -1,25 +1,25 @@
 // frontend/src/pages/Home.tsx
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
 const Home = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
     total_solved_cases: 0,
     total_employees: 0,
-    active_cases: 0
+    active_cases: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/case/stats/');
+        const response = await fetch("/api/case/stats/");
         const data = await response.json();
         setStats(data);
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error("Error fetching stats:", error);
       } finally {
         setLoading(false);
       }
@@ -29,7 +29,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-
       {/* Header */}
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-blue-900 to-slate-900" />
@@ -53,7 +52,7 @@ const Home = () => {
             </Link>
           </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
               to="/register"
               className="px-8 py-4 rounded-xl border border-white/60 text-white font-semibold hover:bg-white/10 transition"
@@ -61,7 +60,6 @@ const Home = () => {
               ثبت‌نام
             </Link>
           </div>
-
         </div>
       </header>
 
@@ -72,7 +70,9 @@ const Home = () => {
             درباره سامانه
           </h2>
           <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed text-center max-w-4xl mx-auto">
-            این سامانه با هدف دیجیتال‌سازی فرآیند مدیریت پرونده‌های جنایی طراحی شده است. نیروهای پلیس می‌توانند پرونده‌ها، شواهد، مظنونین و گزارش‌ها را به‌صورت یکپارچه مدیریت کرده و روند پیگیری را تسریع کنند.
+            این سامانه با هدف دیجیتال‌سازی فرآیند مدیریت پرونده‌های جنایی طراحی
+            شده است. نیروهای پلیس می‌توانند پرونده‌ها، شواهد، مظنونین و گزارش‌ها
+            را به‌صورت یکپارچه مدیریت کرده و روند پیگیری را تسریع کنند.
           </p>
         </div>
       </section>
@@ -87,30 +87,28 @@ const Home = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                title: 'پرونده‌های حل شده',
+                title: "پرونده‌های حل شده",
                 value: stats.total_solved_cases,
-                color: 'text-blue-600'
+                color: "text-blue-600",
               },
               {
-                title: 'کارمندان فعال',
+                title: "کارمندان فعال",
                 value: stats.total_employees,
-                color: 'text-green-600'
+                color: "text-green-600",
               },
               {
-                title: 'پرونده‌های فعال',
+                title: "پرونده‌های فعال",
                 value: stats.active_cases,
-                color: 'text-yellow-500'
-              }
+                color: "text-yellow-500",
+              },
             ].map((item, i) => (
               <div
                 key={i}
                 className="relative bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all"
               >
-                <p className="text-sm text-gray-500 mb-2">
-                  {item.title}
-                </p>
+                <p className="text-sm text-gray-500 mb-2">{item.title}</p>
                 <h3 className={`text-4xl font-extrabold ${item.color}`}>
-                  {loading ? '...' : item.value.toLocaleString()}
+                  {loading ? "..." : item.value.toLocaleString()}
                 </h3>
               </div>
             ))}
@@ -124,7 +122,8 @@ const Home = () => {
           آماده ورود به سامانه هستید؟
         </h2>
         <p className="text-lg md:text-xl opacity-80 max-w-2xl mx-auto mb-10">
-          همین حالا وارد شوید و فرآیند مدیریت پرونده‌ها را به‌صورت دیجیتال تجربه کنید.
+          همین حالا وارد شوید و فرآیند مدیریت پرونده‌ها را به‌صورت دیجیتال تجربه
+          کنید.
         </p>
 
         <Link
@@ -134,7 +133,6 @@ const Home = () => {
           ورود به سامانه
         </Link>
       </section>
-
     </div>
   );
 };
